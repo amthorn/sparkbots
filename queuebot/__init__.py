@@ -14,7 +14,7 @@ class QueueBot():
 
     def handle_data(self, data):
         if data:
-            if self.api.people.me().id in data['mentionedPeople']:
+            if data.get('mentionedPeople') and self.api.people.me().id in data['mentionedPeople']:
                 message_id = data['id']
                 message_text = self.api.messages.get(message_id).text
                 message_text = message_text.replace(self.api.people.me().displayName, "", 1).strip()
