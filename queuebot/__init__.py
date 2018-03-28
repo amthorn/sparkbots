@@ -21,8 +21,8 @@ class QueueBot():
 
                 if message_text.lower() not in self.supported_commands:
                     self.create_message(
-                        f"Unrecognized Command: '{message_text.lower()}'\n\n"
-                        f"Please use one of:\n" + str('\n- '.join(self.supported_commands)),
+                        "Unrecognized Command: '" + message_text.lower() + "'\n\n" +
+                        "Please use one of:\n" + str('\n- '.join(self.supported_commands)),
                         data['roomId']
                     )
                 else:
