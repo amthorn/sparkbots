@@ -10,7 +10,7 @@ class QueueBot():
 
     def handle_data(self, data):
         if data:
-            if self.bot.people.me().id in data['mentionedPeople']:
+            if self.api.people.me().id in data['mentionedPeople']:
                 message_id = data['id']
                 message_text = self.api.messages.get(message_id).text
                 self.create_message(message_text)
