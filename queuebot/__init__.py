@@ -43,7 +43,7 @@ class QueueBot():
         pass
 
     def enque(self, person):
-        string = ' : '.join([datetime.datetime.now(), person.id, person.displayName])
+        string = ' : '.join([str(datetime.datetime.now()), person.id, person.displayName])
         import pdb; pdb.set_trace()
         print()
 
