@@ -1,5 +1,6 @@
 from ciscosparkapi import CiscoSparkAPI
 from config import QUEUE_BOT
+from queue import Queue
 
 class QueueBot():
     def __init__(self):
@@ -8,6 +9,7 @@ class QueueBot():
             'add me': self.add_me,
             'remove me': self.remove_me
         }
+        self.q = Queue()
 
     def create_message(self, message, roomId):
         self.api.messages.create(text=message, roomId=roomId)
@@ -30,8 +32,17 @@ class QueueBot():
         return ''
 
     def add_me(self, data):
-        import pdb; pdb.set_trace()
-        self.create_message(message_text, data['roomId'])
+        person = self.api.people.get(data['personId'])
+        self.create_message("Adding '"+ str(person.displayName) + "'", data['roomId'])
+        self.enque(person)
 
     def remove_me(self, data):
+        pass
+
+    def enque(self, person):
+        string = ' : '.join([datetime.datetime.now(), person.id, person.displayName])
+        import pdb; pdb.set_trace()
+        print()
+
+    def deque(self, person):
         pass
