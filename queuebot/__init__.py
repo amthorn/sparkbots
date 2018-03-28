@@ -4,10 +4,10 @@ from config import QUEUE_BOT
 class QueueBot():
     def __init__(self):
         self.api = CiscoSparkAPI(QUEUE_BOT)
-        self.supported_commands = [
-            'add me',
-            'remove me'
-        ]
+        self.supported_commands = {
+            'add me': self.add_me,
+            'remove me': self.remove_me
+        }
 
     def create_message(self, message, roomId):
         self.api.messages.create(text=message, roomId=roomId)
@@ -26,5 +26,12 @@ class QueueBot():
                         data['roomId']
                     )
                 else:
-                    self.create_message(message_text, data['roomId'])
+                    self.supported_commands[message_text.lower()](data)
         return ''
+
+    def add_me(self, data):
+        import pdb; pdb.set_trace()
+        self.create_message(message_text, data['roomId'])
+
+    def remove_me(self, data):
+        pass
