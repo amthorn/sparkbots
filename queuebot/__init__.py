@@ -1,8 +1,8 @@
 import datetime
+import pickle
 
 from ciscosparkapi import CiscoSparkAPI
-from config import QUEUE_BOT
-from queue import Queue
+from config import QUEUE_BOT, LOG
 
 
 class QueueBot():
@@ -10,9 +10,13 @@ class QueueBot():
         self.api = CiscoSparkAPI(QUEUE_BOT)
         self.supported_commands = {
             'add me': self.add_me,
-            'remove me': self.remove_me
+            'remove me': self.remove_me,
+            'list': self.list_queue
         }
-        self.q = Queue()
+        if not os.path.exists(LOG)
+            self.q = []
+        else:
+            self.q = pickle.load(open(LOG, 'rb'))
 
     def create_message(self, message, roomId):
         self.api.messages.create(text=message, roomId=roomId)
@@ -38,14 +42,30 @@ class QueueBot():
         person = self.api.people.get(data['personId'])
         self.create_message("Adding '"+ str(person.displayName) + "'", data['roomId'])
         self.enque(person)
+        self.list_queue(data)
+
+    def list_queue(self, data):
+        if self.q
+            people = '- ' + ('\n- '.join([i['person'] for i in self.q]))
+        else:
+            people = 'There is no one in the queue'
+        self.create_message(
+            'Current queue is:\n\n' + people,
+            data['roomId']
+        )
 
     def remove_me(self, data):
         pass
 
     def enque(self, person):
-        string = ' : '.join([str(datetime.datetime.now()), person.id, person.displayName])
-        import pdb; pdb.set_trace()
-        print()
+        self.q.append({
+            'time': datetime.datetime.now()),
+            'personId': person.id,
+            'person': person.displayName
+        })
+        pickle.dump(self.q, open(LOG, 'wb'))
 
     def deque(self, person):
-        pass
+        result = self.q.pop(0)
+        pickle.dump(self.q, open(LOG, 'wb'))
+
