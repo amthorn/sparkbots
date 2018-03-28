@@ -1,5 +1,6 @@
 import datetime
 import pickle
+import os
 
 from ciscosparkapi import CiscoSparkAPI
 from config import QUEUE_BOT, LOG
@@ -13,7 +14,7 @@ class QueueBot():
             'remove me': self.remove_me,
             'list': self.list_queue
         }
-        if not os.path.exists(LOG)
+        if not os.path.exists(LOG):
             self.q = []
         else:
             self.q = pickle.load(open(LOG, 'rb'))
@@ -45,10 +46,11 @@ class QueueBot():
         self.list_queue(data)
 
     def list_queue(self, data):
-        if self.q
+        if self.q:
             people = '- ' + ('\n- '.join([i['person'] for i in self.q]))
         else:
             people = 'There is no one in the queue'
+
         self.create_message(
             'Current queue is:\n\n' + people,
             data['roomId']
@@ -59,7 +61,7 @@ class QueueBot():
 
     def enque(self, person):
         self.q.append({
-            'time': datetime.datetime.now()),
+            'time': datetime.datetime.now(),
             'personId': person.id,
             'person': person.displayName
         })
