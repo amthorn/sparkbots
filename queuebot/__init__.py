@@ -9,6 +9,7 @@ class QueueBot():
         self.api.messages.create(message)
 
     def handle_data(self, data):
+        import pdb; pdb.set_trace()
         if data:
             if self.api.people.me().id in data['mentionedPeople']:
                 message_id = data['id']
