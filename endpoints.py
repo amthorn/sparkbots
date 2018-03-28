@@ -12,4 +12,4 @@ def cron():
 @app.route('/queuebot', methods=['GET', 'POST'])
 def queue():
     bot = QueueBot()
-    bot.handle_data(flask.request.json.get('data'))
+    return bot.handle_data(flask.request.json.get('data'))
