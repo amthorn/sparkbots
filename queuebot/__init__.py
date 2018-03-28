@@ -13,6 +13,8 @@ class QueueBot():
             if self.api.people.me().id in data['mentionedPeople']:
                 message_id = data['id']
                 message_text = self.api.messages.get(message_id).text
+                import pdb; pdb.set_trace()
+                # message_text = message_text.replace()
                 self.create_message(message_text, data['roomId'])
             else:
                 return ''
