@@ -1,3 +1,5 @@
+import flask
+
 from app import app
 from cronbot import CronBot
 from queuebot import QueueBot
@@ -10,3 +12,4 @@ def cron():
 @app.route('/queuebot', methods=['GET', 'POST'])
 def queue():
     bot = QueueBot()
+    bot.handle_data(flask.request.json.get('data'))
