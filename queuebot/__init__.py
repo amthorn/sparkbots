@@ -57,7 +57,12 @@ class QueueBot():
         )
 
     def remove_me(self, data):
-        pass
+        person = self.api.people.get(data['personId'])
+        self.create_message("Removing '"+ str(person.displayName) + "'", data['roomId'])
+        if not self.deque(person):
+            self.create_message("ERROR: '" + str(person.displayName) + "' was not found in the queue")
+        else:
+            self.list_queue(data)
 
     def enque(self, person):
         self.q.append({
@@ -66,8 +71,15 @@ class QueueBot():
             'person': person.displayName
         })
         pickle.dump(self.q, open(LOG, 'wb'))
+        return True
 
     def deque(self, person):
-        result = self.q.pop(0)
+        for index, person in enumerate(self.q):
+            if self.q['personId'] == person.id:
+                break
+        else:
+            return False
+        self.pop(index)
         pickle.dump(self.q, open(LOG, 'wb'))
+        return True
 
