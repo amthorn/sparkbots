@@ -5,18 +5,16 @@ class QueueBot():
     def __init__(self):
         self.api = CiscoSparkAPI(QUEUE_BOT)
 
-    def create_message(self, message):
-        self.api.messages.create(message)
+    def create_message(self, message, roomId):
+        self.api.messages.create(text=message, roomId=roomId)
 
     def handle_data(self, data):
-        import pdb; pdb.set_trace()
         if data:
             if self.api.people.me().id in data['mentionedPeople']:
                 message_id = data['id']
                 message_text = self.api.messages.get(message_id).text
-                self.create_message(message_text)
+                self.create_message(message_text, data['roomId'])
             else:
                 return ''
         else:
-            self.create_message('Invalid POST request')
             return ''
