@@ -75,8 +75,8 @@ class QueueBot():
         return True
 
     def deque(self, person):
-        for index, person in enumerate(self.q):
-            if self.q['personId'] == person.id:
+        for index, member in enumerate(self.q):
+            if member['personId'] == person.id:
                 break
         else:
             return False
