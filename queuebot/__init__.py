@@ -60,7 +60,7 @@ class QueueBot():
         person = self.api.people.get(data['personId'])
         self.create_message("Removing '"+ str(person.displayName) + "'", data['roomId'])
         if not self.deque(person):
-            self.create_message("ERROR: '" + str(person.displayName) + "' was not found in the queue")
+            self.create_message("ERROR: '" + str(person.displayName) + "' was not found in the queue", data['roomId'])
         else:
             self.list_queue(data)
 
