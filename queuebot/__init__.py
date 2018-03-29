@@ -4,6 +4,7 @@ import os
 
 from ciscosparkapi import CiscoSparkAPI
 from config import QUEUE_BOT, LOG
+from queuebot.queuebotalchemy import QueueBotAlchemy
 
 
 class QueueBot():
@@ -18,6 +19,11 @@ class QueueBot():
             self.q = []
         else:
             self.q = pickle.load(open(LOG, 'rb'))
+        self.database = QueueBotAlchemy()
+        from queuebot.models.person import PersonModel
+        from app import app
+        app.session.query(PersonModel).all()
+
 
     def create_message(self, message, roomId):
         self.api.messages.create(text=message, roomId=roomId)
@@ -47,6 +53,9 @@ class QueueBot():
 
     def list_queue(self, data):
         if self.q:
+            people = '- '
+            for member in self.q:
+                people += self.format_person()
             people = '- ' + ('\n- '.join([i['person'] for i in self.q]))
         else:
             people = 'There is no one in the queue'
