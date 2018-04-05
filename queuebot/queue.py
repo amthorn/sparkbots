@@ -4,15 +4,15 @@ import datetime
 import pprint
 
 from app import logger, FORMAT_STRING
-from app.config import QUEUE_FILE, PEOPLE_FILE, COMMANDS_FILE
+from config import QUEUE_FILE, PEOPLE_FILE, COMMANDS_FILE
 from queuebot.people import PeopleManager
 
 
 class Queue:
-    def __init__(self, api, project):
+    def __init__(self, api, project, people_manager):
         self._api = api
         self._file = QUEUE_FILE.format(project)
-        self._people = PeopleManager(self._api, project=project)
+        self._people = people_manager
 
         if not os.path.exists(self._file):
             self._q = []
@@ -27,7 +27,7 @@ class Queue:
         return self._q
 
     def get_queue_member(self, id):
-        for member in self._q:
+        for member in self.get_queue():
             if member['personId'] == id:
                 return member
         else:
@@ -35,6 +35,8 @@ class Queue:
 
     def add_to_queue(self, data, project):
         person = self._api.people.get(data['personId'])
+
+        self.get_queue()
 
         self._q.append({
             'personId': data['personId'],
@@ -46,13 +48,13 @@ class Queue:
         self._people.update_person(
             id=data['personId'],
             currentlyInQueue=True,
-            number_of_times_in_queue=pickled_person['number_of_times_in_queue'] + 1
+            number_of_times_in_queue=pickled_person.get('number_of_times_in_queue', 0) + 1
         )
         self._save()
         return person
 
     def remove_from_queue(self, data):
-        for index, member in enumerate(self._q):
+        for index, member in enumerate(self.get_queue()):
             if member['personId'] == data['personId']:
                 break
         else:
@@ -65,10 +67,14 @@ class Queue:
 
         person = self._people.get_person(id=member['personId'])
         enqueued = datetime.datetime.strptime(member['timeEnqueued'], "%Y-%m-%d %H:%M:%S.%f")
-        at_head_time = datetime.datetime.strptime(member['atHeadTime'], "%Y-%m-%d %H:%M:%S.%f")
         now = datetime.datetime.now()
+        if member.get('atHeadTime'):
+            at_head_time = datetime.datetime.strptime(member['atHeadTime'], "%Y-%m-%d %H:%M:%S.%f")
+            at_head = (now - at_head_time).seconds
+        else:
+            at_head = 0
+
         total = (now - enqueued).seconds
-        at_head = (now - at_head_time).seconds
 
         self._people.update_person(
             id=member['personId'],

@@ -1,6 +1,5 @@
 import logging
 import argparse
-import config
 
 from flask import Flask
 from config import LOGGER_CONFIG

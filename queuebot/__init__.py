@@ -4,12 +4,12 @@ import json
 import re
 import requests
 
-from app.config import LOG
+from config import LOG
 from queuebot.queue import Queue
 from queuebot.people import PeopleManager
 from queuebot.commands import CommandManager
 from app import app, logger, FORMAT_STRING, TIMEOUT
-from app.config import ADMIN_FILE, PROJECT_CONFIG, GLOBAL_ADMIN
+from config import ADMIN_FILE, PROJECT_CONFIG, GLOBAL_ADMIN
 
 
 class Bot():
@@ -46,20 +46,22 @@ class Bot():
             'show last (\d*) commands': self.show_command_history,
             'show people': self.show_people,
             'get all stats': self.get_stats,
-            'get stats for (.*)': self.get_stats_for
+            'get stats for (.*)': self.get_stats_for,
+            'add (.*)': self.add_person,
+            'remove (.*)': self.remove_person
         }
         logger.debug('supported admin commands:\n' + str(self.supported_admin_commands.keys()))
-
-        logger.debug("Initializing Queue")
-        self.q = Queue(self.api, project=self.project)
-        logger.debug("Initialized Queue")
 
         logger.debug("Initializing People Manager")
         self.people = PeopleManager(self.api, project=self.project)
         logger.debug("Initialized People Manager")
 
+        logger.debug("Initializing Queue")
+        self.q = Queue(self.api, project=self.project, people_manager=self.people)
+        logger.debug("Initialized Queue")
+
         logger.debug("Initializing Command Manager")
-        self.commands = CommandManager(self.api, project=self.project)
+        self.commands = CommandManager(self.api, project=self.project, people_manager=self.people)
         logger.debug("Initialized Command Manager")
 
         logger.debug("Getting Admins for '" + str(self.project) + "'")
@@ -88,8 +90,13 @@ class Bot():
             "For admins, use 'show admin commands' to see a list of admin commands"
 
     def status(self, data):
+        if self.project:
+            message = "STATUS: OK"
+        else:
+            message = "STATUS: UNREGISTERED"
+
         self.create_message(
-            "STATUS: OK",
+            message,
             roomId=data['roomId']
         )
 
@@ -188,8 +195,8 @@ class Bot():
                             self.q.get_queue_member(person['sparkId'])['timeEnqueued'],
                             "%Y-%m-%d %H:%M:%S.%f"
                         )
-                        time_in_queue = str(person['totalTimeInQueue'] + \
-                                        (datetime.datetime.now() - time_enqueued).seconds) + ' seconds'
+                        time_in_queue = person['totalTimeInQueue'] + \
+                                        (datetime.datetime.now() - time_enqueued).seconds
                     else:
                         time_in_queue = person['totalTimeInQueue']
 
@@ -379,6 +386,48 @@ class Bot():
             "Last " + str(number) + " commands are:\n" + command_string,
             roomId=data['roomId']
         )
+
+    def add_person(self, data):
+        tagged = set(data['mentionedPeople']) - {self.api.people.me().id}
+        if not tagged:
+            self.create_message(
+                "Nobody was tagged to be added. Please tag who you would like to add",
+                roomId=data['roomId']
+            )
+        elif len(tagged) > 1:
+            self.create_message(
+                "Too many people were tagged. Please only tag one person at a time to be added",
+                roomId=data['roomId']
+            )
+        else:
+            person_data = {'personId': tagged.pop()}
+            person = self.people.add_person(person_data)
+            logger.debug("Executing add person")
+            person = self.q.add_to_queue(person_data, self.project)
+            self.create_message("Adding '"+ str(person.displayName) + "'", data['roomId'])
+            self.list_queue(data)
+
+    def remove_person(self, data):
+        tagged = set(data['mentionedPeople']) - {self.api.people.me().id}
+        if not tagged:
+            self.create_message(
+                "Nobody was tagged to be removed. Please tag who you would like to remove",
+                roomId=data['roomId']
+            )
+        elif len(tagged) > 1:
+            self.create_message(
+                "Too many people were tagged. Please only tag one person at a time to be removed",
+                roomId=data['roomId']
+            )
+        else:
+            person_data = {'personId': tagged.pop()}
+            logger.debug("Executing remove me")
+            person = self.api.people.get(person_data['personId'])
+            self.create_message("Removing '"+ str(person.displayName) + "'", data['roomId'])
+            if not self.q.remove_from_queue(person_data):
+                self.create_message("ERROR: '" + str(person.displayName) + "' was not found in the queue", data['roomId'])
+            else:
+                self.list_queue(data)
 
     def add_admin(self, data):
         id = re.search('add admin (\w+)', self.message_text).group(1)

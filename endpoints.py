@@ -6,7 +6,7 @@ from app import app, logger
 from cronbot import CronBot
 from queuebot import Bot
 from ciscosparkapi import CiscoSparkAPI
-from config import QUEUE_BOT
+from config import DEV_QUEUE_BOT
 
 @app.route('/cronbot', methods=['GET'])
 def cron():
@@ -20,7 +20,7 @@ def queue():
             logger.debug(pprint.pformat(data))
 
             logger.debug('Initializing Spark API')
-            api = CiscoSparkAPI(QUEUE_BOT)
+            api = CiscoSparkAPI(DEV_QUEUE_BOT)
             logger.debug('Spark API initialized')
 
             data = data['data']

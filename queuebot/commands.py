@@ -4,17 +4,17 @@ import pprint
 import datetime
 
 from app import logger
-from app.config import COMMANDS_FILE
+from config import COMMANDS_FILE
 from queuebot.people import PeopleManager
 
 
 class CommandManager:
-    def __init__(self, api, project):
+    def __init__(self, api, project, people_manager):
         self._api = api
         self._file = COMMANDS_FILE
         self._project = project
         self._displayName = self._api.people.me().displayName
-        self._people = PeopleManager(self._api, project=project)
+        self._people = people_manager
 
         if not os.path.exists(self._file):
             self._commands = []

@@ -3,7 +3,7 @@ import os
 import pprint
 
 from app import logger
-from app.config import PEOPLE_FILE
+from config import PEOPLE_FILE
 
 
 class PeopleManager:
@@ -28,7 +28,6 @@ class PeopleManager:
             return {}
 
     def _save(self):
-        logger.debug(pprint.pformat(self._people))
         json.dump(self._people, open(self._file, 'w'), indent=4, separators=(',', ': '))
 
     def update_person(self, id, **kwargs):
@@ -46,7 +45,7 @@ class PeopleManager:
             person = {
                 'sparkId': api_person.id,
                 'displayName': api_person.displayName,
-                'nickName': api_person.nickName,
+                'nickName': getattr(api_person, 'nickName', None),
                 'lastName': api_person.lastName,
                 'email': api_person.emails[0],
                 'avatar': api_person.avatar,
