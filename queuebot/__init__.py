@@ -3,13 +3,15 @@ import os
 import json
 import re
 import requests
+import csv
 
-from config import LOG
+from dateutil import parser
 from queuebot.queue import Queue
 from queuebot.people import PeopleManager
 from queuebot.commands import CommandManager
-from app import app, logger, FORMAT_STRING, TIMEOUT
-from config import ADMIN_FILE, PROJECT_CONFIG, GLOBAL_ADMIN
+from queuebot.admins import AdminManager
+from app import app, logger, FORMAT_STRING, TIMEOUT, CSV_FILE_FORMAT, VERSION, RELEASED, AUTHOR, EMAIL
+from config import PROJECT_CONFIG, GLOBAL_ADMINS
 
 
 class Bot():
@@ -33,6 +35,8 @@ class Bot():
             'list': self.list_queue,
             'help': self.help,
             'status': self.status,
+            'how long': self.how_long,
+            'about': self.about
         }
         logger.debug('supported commands:\n' + str(self.supported_commands.keys()))
 
@@ -45,16 +49,21 @@ class Bot():
             'show registration': self.show_registration,
             'show last (\d*) commands': self.show_command_history,
             'show people': self.show_people,
+            'get all stats as csv': self.get_stats_csv,
             'get all stats': self.get_stats,
             'get stats for (.*)': self.get_stats_for,
-            'add (.*)': self.add_person,
-            'remove (.*)': self.remove_person
+            'add person (.*)': self.add_person,
+            'remove person (.*)': self.remove_person
         }
         logger.debug('supported admin commands:\n' + str(self.supported_admin_commands.keys()))
 
         logger.debug("Initializing People Manager")
         self.people = PeopleManager(self.api, project=self.project)
         logger.debug("Initialized People Manager")
+
+        logger.debug("Initializing Admin Manager")
+        self.admins = AdminManager(self.api, project=self.project, people_manager=self.people)
+        logger.debug("Initialized Admin Manager")
 
         logger.debug("Initializing Queue")
         self.q = Queue(self.api, project=self.project, people_manager=self.people)
@@ -66,20 +75,13 @@ class Bot():
 
         logger.debug("Getting Admins for '" + str(self.project) + "'")
 
-        if not os.path.exists(ADMIN_FILE):
-            json.dump({}, open(ADMIN_FILE, 'w'))
-            self.admins = []
-        else:
-            self.all_admins = json.load(open(ADMIN_FILE, 'r'))
-            self.admins = self.all_admins.get(self.project, [])
-
         if not os.path.exists(PROJECT_CONFIG):
             json.dump({}, open(PROJECT_CONFIG, 'w'))
 
         logger.debug("Admins for '" + str(self.project) + "' are:\n" + str(self.admins))
 
         self.help_string = \
-            "This bot is to be used to manage a queue for a given team.\n" \
+            "This bot is to be used to manage a queue for a given team. " \
             "It can be used to get statistical information as well as manage an individual queue.\n" \
             "\n" \
             "This QueueBot is registered to '" + str(self.project) + "'\n" \
@@ -89,11 +91,18 @@ class Bot():
             "\n" \
             "For admins, use 'show admin commands' to see a list of admin commands"
 
+        self.about_string = \
+            "This bot is to be used to manage a queue for a given team. " \
+            "It can be used to get statistical information as well as manage an individual queue.\n" \
+            "\n" \
+            "This QueueBot is registered to '" + str(self.project) + "'\n" \
+            "\n" \
+            "Version: **" + str(VERSION) + "**\n\n" \
+            "Released: " + str(RELEASED) + "\n\n" \
+            "Author: " + str(AUTHOR) + " (" + str(EMAIL) + ")"
+
     def status(self, data):
-        if self.project:
-            message = "STATUS: OK"
-        else:
-            message = "STATUS: UNREGISTERED"
+        message = "STATUS: OK"
 
         self.create_message(
             message,
@@ -167,59 +176,27 @@ class Bot():
             stats['PERSON'].append(person['displayName'])
             if not target or target == 'TOTAL TIME IN QUEUE':
                 if person['currentlyInQueue']:
-                    time_enqueued = datetime.datetime.strptime(
-                        self.q.get_queue_member(person['sparkId'])['timeEnqueued'],
-                        "%Y-%m-%d %H:%M:%S.%f"
-                    )
+                    time_enqueued = parser.parse(self.q.get_queue_member(person['sparkId'])['timeEnqueued'])
                     stats[target or 'TOTAL TIME IN QUEUE'].append(str(person['totalTimeInQueue'] + \
                                     (datetime.datetime.now() - time_enqueued).seconds) + ' seconds')
                 else:
                     stats[target or 'TOTAL TIME IN QUEUE'].append(str(person['totalTimeInQueue']) + ' seconds')
             if not target or target == 'TOTAL TIME AT QUEUE HEAD':
                 if len(queue) and queue[0]['personId'] == person['sparkId']:
-                    time_enqueued = datetime.datetime.strptime(
-                        queue[0]['atHeadTime'],
-                        "%Y-%m-%d %H:%M:%S.%f"
-                    )
+                    time_enqueued = parser.parse(queue[0]['atHeadTime'])
                     stats[target or 'TOTAL TIME AT QUEUE HEAD'].append(str(person['totalTimeAtHead'] +
                                          (datetime.datetime.now() - time_enqueued).seconds) + ' seconds')
                 else:
                     stats[target or 'TOTAL TIME AT QUEUE HEAD'].append(str(person['totalTimeAtHead']) + ' seconds')
 
             if not target or target == 'AVERAGE TIME IN QUEUE':
-                if person['number_of_times_in_queue'] == 0:
-                    stats[target or 'AVERAGE TIME IN QUEUE'].append('0 seconds')
-                else:
-                    if person['currentlyInQueue']:
-                        time_enqueued = datetime.datetime.strptime(
-                            self.q.get_queue_member(person['sparkId'])['timeEnqueued'],
-                            "%Y-%m-%d %H:%M:%S.%f"
-                        )
-                        time_in_queue = person['totalTimeInQueue'] + \
-                                        (datetime.datetime.now() - time_enqueued).seconds
-                    else:
-                        time_in_queue = person['totalTimeInQueue']
-
-                    stats[target or 'AVERAGE TIME IN QUEUE'].append(str(round(
-                        time_in_queue / person['number_of_times_in_queue'],
-                        2
-                    )) + ' seconds')
+                stats[target or 'AVERAGE TIME IN QUEUE'].append(
+                    str(self.q.get_average_time_in_queue(id=person['sparkId'])) + ' seconds'
+                )
             if not target or target == 'AVERAGE TIME AT QUEUE HEAD':
-                if person['number_of_times_in_queue'] == 0:
-                    stats[target or 'AVERAGE TIME AT QUEUE HEAD'].append('0 seconds')
-                else:
-                    if len(queue) and queue[0]['personId'] == person['sparkId']:
-                        time_enqueued = datetime.datetime.strptime(
-                            queue[0]['atHeadTime'],
-                            "%Y-%m-%d %H:%M:%S.%f"
-                        )
-                        total_head = person['totalTimeAtHead'] + (datetime.datetime.now() - time_enqueued).seconds
-                    else:
-                        total_head = person['totalTimeAtHead']
-                    stats[target or 'AVERAGE TIME AT QUEUE HEAD'].append(str(round(
-                        total_head / person['number_of_times_in_queue'],
-                        2
-                    )) + ' seconds')
+                stats[target or 'AVERAGE TIME AT QUEUE HEAD'].append(
+                    str(self.q.get_average_time_at_queue_head(id=person['sparkId'])) + ' seconds'
+                )
             if not target or target == 'COMMANDS ISSUED':
                 stats[target or 'COMMANDS ISSUED'].append(str(person['commands']))
             if not target or target == 'NUMBER OF TIMES IN QUEUE':
@@ -231,9 +208,6 @@ class Bot():
             return None
         else:
             return json.load(open(PROJECT_CONFIG, 'r')).get(roomId, None)
-
-    def is_admin(self, data):
-        return data['personId'] in self.admins or data['personId'] == GLOBAL_ADMIN
 
     def create_message(self, message, roomId):
         logger.debug("Sending Message '" + message + "' to room '" + roomId + "' ")
@@ -275,7 +249,7 @@ class Bot():
                 roomId=data['roomId']
             )
         elif self.admin_arg_exists(self.message_text):
-            if self.is_admin(data):
+            if self.admins.is_admin(id=data['personId']):
                 self.admin_arg_exists(self.message_text)(data)
             else:
                 self.create_message(
@@ -286,9 +260,7 @@ class Bot():
             if not self.project:
                 message = "QueueBot is not registered to a project! Ask an admin to register this bot"
                 self.create_message(message, data['roomId'])
-                raise Exception(message)
-
-            if not self.arg_exists(self.message_text):
+            elif not self.arg_exists(self.message_text):
                 self.create_message(
                     "Unrecognized Command: '" + self.message_text.lower() + "'\n\n" +
                     "Please use one of:\n- " + str('\n- '.join(self.supported_commands)),
@@ -329,11 +301,11 @@ class Bot():
             self.list_queue(data)
 
     def format_person(self, person):
-        formatted_date = datetime.datetime.strptime(person['timeEnqueued'], "%Y-%m-%d %H:%M:%S.%f")
+        formatted_date = parser.parse(person['timeEnqueued'])
         return person['displayName'] + " (" + formatted_date.strftime(FORMAT_STRING) + ")"
 
     def show_admins(self, data):
-        admin_names = [self.api.people.get(i).displayName for i in (self.admins + [GLOBAL_ADMIN])]
+        admin_names = [self.api.people.get(i).displayName for i in (self.admins.get_admins() + GLOBAL_ADMINS)]
         admins_nice = '- '.join([(i + '\n') for i in admin_names])
         self.create_message(
             "Admins for '" + str(self.project) + "' are:\n- " + admins_nice,
@@ -378,7 +350,7 @@ class Bot():
         for index, command in enumerate(commands[::-1]):
             if index >= number:
                 break
-            time = datetime.datetime.strptime(command['timeIssued'], "%Y-%m-%d %H:%M:%S.%f")
+            time = parser.parse(command['timeIssued'])
             command_string += str(index + 1) + '. ' + command['command'] + ' (' + str(command['displayName']) + \
                               ' executed at ' + str(time.strftime(FORMAT_STRING)) + ')\n'
 
@@ -430,61 +402,125 @@ class Bot():
                 self.list_queue(data)
 
     def add_admin(self, data):
-        id = re.search('add admin (\w+)', self.message_text).group(1)
-        person = self.api.people.get(id)
-        if person and person.id not in self.admins:
-            self.admins += [person.id]
-            self.all_admins[self.project] = self.admins
-            json.dump(self.all_admins, open(ADMIN_FILE, 'w'))
+        tagged = set(data['mentionedPeople']) - {self.api.people.me().id}
 
+        if not tagged:
             self.create_message(
-                "Added '" + str(person.displayName) + "' as an admin.",
+                "Nobody was tagged to be added. Please tag who you would like to add",
                 roomId=data['roomId']
             )
-            self.show_admins(data)
-        elif person:
+        elif len(tagged) > 1:
             self.create_message(
-                "'" + str(person.displayName) + "' is already an admin on this project",
+                "Too many people were tagged. Please only tag one person at a time to be added",
                 roomId=data['roomId']
             )
         else:
-            self.create_message(
-                "No person with id '" + str(id) + "' exists.",
-                roomId=data['roomId']
-            )
+            person = self.api.people.get(tagged.pop())
+            if person and person.id not in self.admins.get_admins():
+                self.admins.add_admin(person.id)
+                self.create_message(
+                    "Added '" + str(person.displayName) + "' as an admin.",
+                    roomId=data['roomId']
+                )
+                self.show_admins(data)
+            elif person:
+                self.create_message(
+                    "'" + str(person.displayName) + "' is already an admin on this project",
+                    roomId=data['roomId']
+                )
+            else:
+                # This line should be unreachable.
+                self.create_message(
+                    "No person with id '" + str(person.id) + "' exists.",
+                    roomId=data['roomId']
+                )
 
     def remove_admin(self, data):
-        id = re.search('remove admin (\w+)', self.message_text).group(1)
-        person = self.api.people.get(id)
-        if person and person.id in self.admins:
-            self.admins = [i for i in self.admins if i != person.id]
-            self.all_admins[self.project] = self.admins
-            json.dump(self.all_admins, open(ADMIN_FILE, 'w'))
+        tagged = set(data['mentionedPeople']) - {self.api.people.me().id}
 
+        if not tagged:
             self.create_message(
-                "Removed '" + str(person.displayName) + "' as an admin.",
+                "Nobody was tagged to be removed. Please tag who you would like to remove",
                 roomId=data['roomId']
             )
-            self.show_admins(data)
-        elif person:
+        elif len(tagged) > 1:
             self.create_message(
-                "'" + str(person.displayName) + "' is not an admin on this project",
+                "Too many people were tagged. Please only tag one person at a time to be removed",
                 roomId=data['roomId']
             )
         else:
-            self.create_message(
-                "No person with id '" + str(id) + "' exists.",
-                roomId=data['roomId']
-            )
+            person = self.api.people.get(tagged.pop())
+            if person and person.id in self.admins.get_admins():
+                self.admins.remove_admin(person.id)
+
+                self.create_message(
+                    "Removed '" + str(person.displayName) + "' as an admin.",
+                    roomId=data['roomId']
+                )
+                self.show_admins(data)
+            elif person:
+                self.create_message(
+                    "'" + str(person.displayName) + "' is not an admin on this project",
+                    roomId=data['roomId']
+                )
+            else:
+                # This line should be unreachable
+                self.create_message(
+                    "No person with id '" + str(person.id) + "' exists.",
+                    roomId=data['roomId']
+                )
 
     def show_people(self, data):
-        people = self.people.get_people()
+        people_on_project = self.people.get_people()
         display = "All people that have used this bot for project '" + str(self.project) + "' are:\n"
-        people_on_project = [i for i in people if i['project'] == self.project]
         if people_on_project:
             for index, person in enumerate(people_on_project):
                 display += str(index + 1) + ". " + person['displayName'] + '\n'
         else:
+            # This line is likely unreachable.
             display += 'There are no people that have used this bot on this project'
 
         self.create_message(display, roomId=data['roomId'])
+
+    def get_stats_csv(self, data):
+        stats = self._get_stats()
+        rows = [list(stats.keys())] + [list(i) for i in zip(*stats.values())]
+        with open(CSV_FILE_FORMAT.format(self.project), 'w') as csvfile:
+            spamwriter = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
+            for row in rows:
+                spamwriter.writerow(row)
+        self.api.messages.create(
+            markdown="Here are all the stats for project '" + str(self.project) + "' as a csv",
+            files=[CSV_FILE_FORMAT.format(self.project)],
+            roomId=data['roomId']
+        )
+        os.remove(CSV_FILE_FORMAT.format(self.project))
+
+    def _make_time_pretty(self, seconds):
+        return str(datetime.timedelta(seconds=seconds))
+
+    def how_long(self, data):
+        """
+        Based on historical data, estimates how long it will take to get from the back of the queue
+        to the front
+        :param data:
+        :return:
+        """
+        seconds = 0
+        index = -1
+
+        for index, member in enumerate(self.q.get_queue()):
+            seconds += self.q.get_average_time_at_queue_head(member['personId'])
+
+        self.create_message(
+            'Given that there are ' + str(index + 1) + ' people in the queue. '
+                                                   'Estimated wait time from the back of the queue is:\n\n' +
+            str(self._make_time_pretty(seconds)),
+            roomId=data['roomId']
+        )
+
+    def about(self, data):
+        self.create_message(
+            self.about_string,
+            roomId=data['roomId']
+        )

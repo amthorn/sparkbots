@@ -11,10 +11,12 @@ from queuebot.people import PeopleManager
 class CommandManager:
     def __init__(self, api, project, people_manager):
         self._api = api
-        self._file = COMMANDS_FILE
+        self._file = COMMANDS_FILE.format(project)
         self._project = project
         self._displayName = self._api.people.me().displayName
         self._people = people_manager
+
+        os.makedirs(os.path.dirname(os.path.realpath(self._file)), exist_ok=True)
 
         if not os.path.exists(self._file):
             self._commands = []
@@ -22,17 +24,7 @@ class CommandManager:
             self._commands = json.load(open(self._file, 'r'))
 
     def get_commands(self, project=None):
-        if not project:
-            return self._commands
-        else:
-            return [i for i in self._commands if i['project'] == project]
-
-    def get_command(self, id, project):
-        for command in self._commands:
-            if id == command['sparkId'] and project == command['project']:
-                return command
-        else:
-            return {}
+        return self._commands
 
     def _save(self):
         logger.debug(pprint.pformat(self._commands))
@@ -49,7 +41,6 @@ class CommandManager:
             'sparkId': api_message.id,
             'personId': api_message.personId,
             'displayName': person['displayName'],
-            'project': project,
             'roomId': api_message.roomId,
             'command': parsed_command,
             'timeIssued': str(datetime.datetime.now())

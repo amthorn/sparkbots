@@ -9,8 +9,10 @@ from config import PEOPLE_FILE
 class PeopleManager:
     def __init__(self, api, project):
         self._api = api
-        self._file = PEOPLE_FILE
+        self._file = PEOPLE_FILE.format(project)
         self._project = project
+
+        os.makedirs(os.path.dirname(os.path.realpath(self._file)), exist_ok=True)
 
         if not os.path.exists(self._file):
             self._people = []
@@ -18,11 +20,11 @@ class PeopleManager:
             self._people = json.load(open(self._file, 'r'))
 
     def get_people(self):
-        return [i for i in self._people if i['project'] == self._project]
+        return self._people
 
     def get_person(self, id):
         for person in self._people:
-            if id == person['sparkId'] and self._project == person['project']:
+            if id == person['sparkId']:
                 return person
         else:
             return {}
@@ -40,10 +42,10 @@ class PeopleManager:
         person = self.get_person(id=data['personId'])
         if not person:
             api_person = self._api.people.get(data['personId'])
-            logger.debug("Adding person '" + api_person.id + "'")
+            logger.debug("Adding person '" + data['personId'] + "'")
 
             person = {
-                'sparkId': api_person.id,
+                'sparkId': data['personId'],
                 'displayName': api_person.displayName,
                 'nickName': getattr(api_person, 'nickName', None),
                 'lastName': api_person.lastName,
@@ -54,8 +56,10 @@ class PeopleManager:
                 'totalTimeAtHead': 0,  # microseconds
                 'currentlyInQueue': False,  # microseconds
                 'admin': False,
-                'commands': 1,
-                'number_of_times_in_queue': 0
+                'commands': 0,
+                'number_of_times_in_queue': 0,
+                'added_to_queue': [],
+                'removed_from_queue': []
             }
             self._people.append(person)
             self._save()
@@ -63,12 +67,3 @@ class PeopleManager:
         else:
             logger.info("Person '" + data['personId'] + "' not added because they already exist")
             return person
-
-    def remove_person(self, api_person):
-        logger.debug("Checking if person '" + person.id + "' exists")
-        for index, person in enumerate(self._people):
-            if api_person.id == person['sparkId']:
-                break
-        else:
-            return
-        self._save()
