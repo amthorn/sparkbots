@@ -5,7 +5,7 @@ import json
 from queuebot.decorators import with_request
 from unittest import mock
 from contextlib import contextmanager
-from tests.scaffolding import CAT_FACT, DAD_JOKE, SUPPORTED_ADMIN_COMMANDS, SUPPORTED_COMMANDS
+from tests.scaffolding import CAT_FACT, DAD_JOKE
 from app import VERSION, RELEASED, AUTHOR, EMAIL
 from freezegun import freeze_time
 from attrdict import AttrDict
@@ -1959,7 +1959,8 @@ def test_nonexistent_command():
     assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
     assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
-               markdown="Unrecognized Command: 'foobar'\n\nPlease use one of:\n- " + '\n- '.join(SUPPORTED_COMMANDS),
+               markdown="Unrecognized Command: 'foobar'\n\nPlease use one of:\n- add me\n- remove me\n"
+                        "- list\n- help\n- status\n- how long\n- about\n- show version\n- show release notes",
                roomId='BLAH'
            ), "Sent message not correct"
 
@@ -2027,7 +2028,8 @@ def test_nonexistent_command():
     assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
     assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
-               markdown="Unrecognized Command: 'foobar'\n\nPlease use one of:\n- " + '\n- '.join(SUPPORTED_COMMANDS),
+               markdown="Unrecognized Command: 'foobar'\n\nPlease use one of:\n- add me\n- remove me\n- list\n- help\n"
+                        "- status\n- how long\n- about\n- show version\n- show release notes",
                roomId='BLAH'
            ), "Sent message not correct"
 
