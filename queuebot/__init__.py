@@ -6,6 +6,7 @@ import requests
 import csv
 import numpy
 import matplotlib
+matplotlib.use('Agg')
 
 from dateutil import parser
 from matplotlib import pyplot

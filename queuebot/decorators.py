@@ -2,6 +2,7 @@ import ciscosparkapi
 import flask
 import re
 import matplotlib
+matplotlib.use('Agg')
 import json
 
 from functools import wraps, partial
