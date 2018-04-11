@@ -3,16 +3,11 @@ import traceback
 import pprint
 
 from app import app, logger
-from cronbot import CronBot
 from queuebot import Bot
 from ciscosparkapi import CiscoSparkAPI
 from config import QUEUE_BOT, PRODUCTION
 
 BOT = None
-
-@app.route('/cronbot', methods=['GET'])
-def cron():
-    bot = CronBot()
 
 @app.route('/queuebot', methods=['POST'])
 def queue():
