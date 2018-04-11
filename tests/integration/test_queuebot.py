@@ -208,23 +208,9 @@ def test_queue_help_unregistered():
     queue()
 
     assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
-    assert CiscoSparkAPI().messages.create.call_args == \
-           mock.call(
-               markdown="This bot is to be used to manage a queue for a given team. It can be used "
-                        "to get statistical information as well as manage an individual queue.\n\n"
-                        "This QueueBot is registered to 'UNIT_TEST'\n\nAvailable commands are:\n\n-"
-                        " **about** (Gets information about queuebot)\n- **add me** (Adds you to"
-                        " the back of the queue)\n- **help** (Displays a brief overview of queuebo"
-                        "t and displays available user commands and their descriptions)\n- **how l"
-                        "ong** (Based on historical data, estimates how long it will take to get f"
-                        "rom the back of the queue to the front)\n- **list** (Shows the queue witho"
-                        "ut mutating it)\n- **remove me** (Removes the first occurence of you from "
-                        "the queue)\n- **show release notes** (Shows the release notes for all ver"
-                        "sions of queuebot)\n- **show version** (Shows the current version number)"
-                        "\n- **status** (Shows the current status of queuebot)\n\nFor admins, use '"
-                        "show admin commands' to see a list of admin commands",
-               roomId='BLAH'
-           ), "Sent message not correct"
+    args, kwargs =  CiscoSparkAPI().messages.create.call_args
+    assert 'This bot is to be used to manage a queue for a given team.' in kwargs['markdown'], "Sent message not correct"
+    assert 'Available commands are:' in kwargs['markdown'], "Sent message not correct"
     args, kwargs = json.dump.call_args
     commands = args[0]
     assert commands[-1]['sparkId'] == 'message-id' and commands[-1]['command'] == 'help'
@@ -347,34 +333,9 @@ def test_admin_command_by_admin():
     from endpoints import queue, CiscoSparkAPI
     queue()
     assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
-    assert CiscoSparkAPI().messages.create.call_args == \
-           mock.call(
-               markdown="Admin commands can be used in any room but are only accessible by an admin.\n\n"
-                        "Available admin commands are:\n- **add admin (\\w+)** (Adds the tagged person a"
-                        "s an admin for the current project)\n- **add person (.\\*)** (Adds the tagged p"
-                        "erson to the back of the queue)\n- **register bot to project .\\*** (Registers t"
-                        "he room to the given project case-insensitive string. The same project can be re"
-                        "gistered to multiple rooms. But one room cannot be registered to multiple bots)\n"
-                        "- **remove admin (\\w+)** (Removes the tagged person as an admin for the current"
-                        " project)\n- **remove person (.\\*)** (Removes the first occurence of the tagged"
-                        " person)\n- **show (average|max|min) (queue depth|flush time) by (hour|day)** (G"
-                        "ets aggregate, max, or min for a given statistic by a given unit. Returns an imag"
-                        "e of a graph)\n- **show admin commands** (Displays all the available commands av"
-                        "ailable to only admins)\n- **show admins** (Shows all the admins for the current"
-                        " project)\n- **show all stats** (Returns a markdown table of global statistics fo"
-                        "r the project)\n- **show all stats as csv** (Returns a CSV file attachment contai"
-                        "ning global statistics for the project)\n- **show largest queue depth** (Shows th"
-                        "e largest queue depth as well as the date at which the queue was that length)\n- "
-                        "**show last (\\d\\*) commands** (Shows the last X commands that were issued on th"
-                        "is project where X is a non-negative integer)\n- **show most active users** (Retu"
-                        "rns a list of the most active users for this project)\n- **show people** (Shows t"
-                        "he names of all the people that have issued a command to queuebot on this project"
-                        ")\n- **show quickest users** (Returns a list of the user/s that take the least ti"
-                        "me at the head of the queue)\n- **show registration** (Shows the project that the"
-                        " current room is registered to)\n- **show stats for (.\\*)** (Returns a markdown "
-                        "table of global statistics for the given statistic)\n",
-               roomId='BLAH'
-           ), "Sent message not correct"
+    args, kwargs = CiscoSparkAPI().messages.create.call_args
+    assert 'Admin commands can be used in any room' in kwargs['markdown'], "Sent message not correct"
+    assert 'Available admin commands are:' in kwargs['markdown'], "Sent message not correct"
     args, kwargs = json.dump.call_args
     commands = args[0]
     assert commands[-1]['sparkId'] == 'message-id' and commands[-1]['command'] == 'show admin commands'
@@ -993,7 +954,7 @@ def test_register_bot_by_nonadmin():
       "id": "message-id",
       "roomId": "BLAH",
       "roomType": "group",
-      "text": "QueueBot show all stats",
+      "text": "QueueBot show all stats as markdown",
       "personId": "test_get_all_stats",
       "personEmail": "avthorn@cisco.com",
       "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
@@ -1022,7 +983,7 @@ def test_get_all_stats():
            ), "Sent message not correct"
     args, kwargs = json.dump.call_args_list[2]
     assert args[0][-1]['sparkId'] == 'message-id' and \
-           args[0][-1]['command'] == 'show all stats'
+           args[0][-1]['command'] == 'show all stats as markdown'
 
 
 @with_request(data={
@@ -1893,7 +1854,7 @@ def test_get_stats_for_commands_issued():
     assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
                markdown="```\n        PERSON        \nCOMMANDS ISSUED\n     display blah      |"
-                        "g Unit Test Display Name |        1       \n       1       \n",
+                        " Unit Test Display Name |        1       \n       1       \n",
                roomId='BLAH'
            ), "Sent message not correct"
 

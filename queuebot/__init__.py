@@ -56,7 +56,7 @@ class Bot():
             'show last (\d*) commands': self.show_command_history,
             'show people': self.show_people,
             'show all stats as csv': self.get_stats_csv,
-            'show all stats': self.get_stats,
+            'show all stats as markdown': self.get_stats,
             'show stats for (.*)': self.get_stats_for,
             'add person (.*)': self.add_person,
             'remove person (.*)': self.remove_person,
