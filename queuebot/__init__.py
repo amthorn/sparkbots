@@ -176,11 +176,17 @@ class Bot():
                 dictionary[column] = raw_dict[column]
                 widths[column] = max([len(str(i)) for i in raw_dict[column]] + [len(column)])
 
-        for index, column in enumerate(dictionary):
+        person = dictionary['PERSON']
+        del dictionary['PERSON']
+
+        for index, column in enumerate(['PERSON'] + sorted(dictionary)):
             message += column.center(widths[column], ' ') + (" | " if index < len(dictionary) - 1 else '\n')
 
         for index in range(column_length):
-            for column_index, column in enumerate(dictionary):
+            message += str(person[index]).center(widths['PERSON'], ' ') + " | "
+
+        for index in range(column_length):
+            for column_index, column in enumerate(sorted(dictionary)):
                 message += str(dictionary[column][index]).center(widths[column], ' ') + \
                            (" | " if column_index < len(dictionary) - 1 else '\n')
 

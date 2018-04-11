@@ -1013,13 +1013,11 @@ def test_get_all_stats():
     assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
     assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
-               markdown="```\n        PERSON         | AVERAGE TIME IN QUEUE | "
-                        "AVERAGE TIME AT QUEUE HEAD | COMMANDS ISSUED | NUMBER "
-                        "OF TIMES IN QUEUE | TOTAL TIME IN QUEUE | TOTAL TIME AT "
-                        "QUEUE HEAD\nUnit Test Display Name |       0 seconds       "
-                        "|         0 seconds          |        1        "
-                        "|            0             |      0 seconds      |        "
-                        "0 seconds        \n",
+               markdown="```\n        PERSON         | AVERAGE TIME AT QUEUE HEAD | AVERAGE TIME IN "
+                        "QUEUE | COMMANDS ISSUED | NUMBER OF TIMES IN QUEUE | TOTAL TIME AT QUEUE HEAD\n"
+                        "TOTAL TIME IN QUEUE\nUnit Test Display Name |         0 seconds          |     "
+                        "  0 seconds       |        1        |            0             |        0 seco"
+                        "nds         |      0 seconds     \n",
                roomId='BLAH'
            ), "Sent message not correct"
     args, kwargs = json.dump.call_args_list[2]
@@ -1894,9 +1892,8 @@ def test_get_stats_for_commands_issued():
     assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
     assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
-               markdown="```\n        PERSON         | COMMANDS ISSUED\n"
-                        "     display blah      |        1       \n"
-                        "Unit Test Display Name |        1       \n",
+               markdown="```\n        PERSON        \nCOMMANDS ISSUED\n     display blah      |"
+                        "g Unit Test Display Name |        1       \n       1       \n",
                roomId='BLAH'
            ), "Sent message not correct"
 
