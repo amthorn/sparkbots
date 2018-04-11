@@ -14,6 +14,9 @@ VERSION = '1.0.0'
 RELEASED = str(datetime.datetime(year=2017, month=4, day=5))
 AUTHOR = 'Ava Thorn'
 EMAIL = 'avthorn@cisco.com'
+QUEUE_THRESHOLD = 50
+MAX_FLUSH_THRESHOLD = 3122064000  # 99 years in seconds
+RELEASE_NOTES = 'release_notes.json'
 
 if __name__ == '__main__':
     from endpoints import *

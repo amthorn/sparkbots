@@ -1,12 +1,16 @@
 import ciscosparkapi
 import flask
 import re
+import matplotlib
+import json
 
 from functools import wraps, partial
 from unittest import mock
 from attrdict import AttrDict
 from config import PROJECT_CONFIG, QUEUE_FILE, PEOPLE_FILE, GLOBAL_STATS_FILE, COMMANDS_FILE, ADMINS_FILE
+from app import RELEASE_NOTES
 
+r_notes = json.load(open(RELEASE_NOTES))
 ME_ID = 'me_id'
 
 def with_request(data, project={}, queue=[], global_stats={}, people=[], commands=[], admins=[],
@@ -18,7 +22,8 @@ def with_request(data, project={}, queue=[], global_stats={}, people=[], command
             GLOBAL_STATS_FILE: global_stats,
             PEOPLE_FILE: people,
             COMMANDS_FILE: commands,
-            ADMINS_FILE: admins
+            ADMINS_FILE: admins,
+            RELEASE_NOTES: r_notes
         }
         file_name = open.call_args_list[-1][0][0]
         return files.get([i for i in files if re.search(i.format(".*?"), file_name)][0])
@@ -44,7 +49,8 @@ def with_request(data, project={}, queue=[], global_stats={}, people=[], command
         @mock.patch('os.path.exists')
         @mock.patch('os.makedirs')
         @mock.patch('os.remove')
-        def closure(mock_remove, mock_makedirs, mock_exists, mock_api, mock_open, mock_flask,
+        @mock.patch('matplotlib.pyplot.savefig')
+        def closure(mock_savefig, mock_remove, mock_makedirs, mock_exists, mock_api, mock_open, mock_flask,
                     mock_load, mock_dump, *args, **kwargs):
             # mock exists
             mock_exists.return_value = True

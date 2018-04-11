@@ -4,13 +4,16 @@ import json
 import re
 import requests
 import csv
+import numpy
+import matplotlib
 
 from dateutil import parser
+from matplotlib import pyplot
 from queuebot.queue import Queue
 from queuebot.people import PeopleManager
 from queuebot.commands import CommandManager
 from queuebot.admins import AdminManager
-from app import app, logger, FORMAT_STRING, TIMEOUT, CSV_FILE_FORMAT, VERSION, RELEASED, AUTHOR, EMAIL
+from app import app, logger, FORMAT_STRING, TIMEOUT, CSV_FILE_FORMAT, VERSION, RELEASED, AUTHOR, EMAIL, QUEUE_THRESHOLD, RELEASE_NOTES
 from config import PROJECT_CONFIG, GLOBAL_ADMINS
 
 
@@ -36,7 +39,9 @@ class Bot():
             'help': self.help,
             'status': self.status,
             'how long': self.how_long,
-            'about': self.about
+            'about': self.about,
+            'show version': self.show_version_number,
+            'show release notes': self.show_release_notes,
         }
         logger.debug('supported commands:\n' + str(self.supported_commands.keys()))
 
@@ -49,11 +54,15 @@ class Bot():
             'show registration': self.show_registration,
             'show last (\d*) commands': self.show_command_history,
             'show people': self.show_people,
-            'get all stats as csv': self.get_stats_csv,
-            'get all stats': self.get_stats,
-            'get stats for (.*)': self.get_stats_for,
+            'show all stats as csv': self.get_stats_csv,
+            'show all stats': self.get_stats,
+            'show stats for (.*)': self.get_stats_for,
             'add person (.*)': self.add_person,
-            'remove person (.*)': self.remove_person
+            'remove person (.*)': self.remove_person,
+            'show most active users': self.most_active_users,
+            'show largest queue depth': self.largest_queue_depth,
+            'show quickest users': self.quickest_at_head_user,
+            'show (average|max|min) (queue depth|flush time) by (hour|day)': self.get_aggregate_stat_unit,
         }
         logger.debug('supported admin commands:\n' + str(self.supported_admin_commands.keys()))
 
@@ -80,16 +89,18 @@ class Bot():
 
         logger.debug("Admins for '" + str(self.project) + "' are:\n" + str(self.admins))
 
+        command_strings = ''
+
+        for command, docstring in self._commands_with_help_string().items():
+            docstring = self._clean_docstring(docstring)
+            command_strings += '- **' + command + (('** (' + docstring + ')\n') if docstring else '**\n')
+
         self.help_string = \
             "This bot is to be used to manage a queue for a given team. " \
-            "It can be used to get statistical information as well as manage an individual queue.\n" \
-            "\n" \
-            "This QueueBot is registered to '" + str(self.project) + "'\n" \
-            "\n" \
-            "Available commands are:\n- " \
-            + '- '.join([(i + '\n') for i in self.supported_commands]) + \
-            "\n" \
-            "For admins, use 'show admin commands' to see a list of admin commands"
+            "It can be used to get statistical information as well as manage an individual queue.\n\n" \
+            "This QueueBot is registered to '" + str(self.project) + "'\n\n" \
+            "Available commands are:\n\n" + command_strings + \
+            "\nFor admins, use 'show admin commands' to see a list of admin commands"
 
         self.about_string = \
             "This bot is to be used to manage a queue for a given team. " \
@@ -101,7 +112,24 @@ class Bot():
             "Released: " + str(RELEASED) + "\n\n" \
             "Author: " + str(AUTHOR) + " (" + str(EMAIL) + ")"
 
+    def _clean_docstring(self, docstring):
+        if docstring:
+            docstring = docstring.strip('\n ')
+            while '  ' in docstring:
+                docstring = re.sub('  ', ' ', docstring)
+            docstring = docstring.replace('\n', '')
+            return docstring
+
+    def _commands_with_help_string(self):
+        return {k: v.__doc__ for k, v in self.supported_commands.items()}
+
+    def _admin_commands_with_help_string(self):
+        return {k: v.__doc__ for k, v in self.supported_admin_commands.items()}
+
     def status(self, data):
+        """
+        Shows the current status of queuebot
+        """
         message = "STATUS: OK"
 
         self.create_message(
@@ -110,7 +138,10 @@ class Bot():
         )
 
     def get_stats_for(self, data):
-        stat = re.search('get stats for (.*)', self.message_text).group(1)
+        """
+        Returns a markdown table of global statistics for the given statistic
+        """
+        stat = re.search('show stats for (.*)', self.message_text).group(1)
         if stat.upper() not in self.column_names:
             self.create_message(
                 "Column '" + str(stat) + "' is not a valid column. Try one of: " + ', '.join(self.column_names),
@@ -123,26 +154,13 @@ class Bot():
             )
 
     def get_stats(self, data):
+        """
+        Returns a markdown table of global statistics for the project
+        """
         self.create_message(
             self._create_markdown_table(self._get_stats()),
             roomId=data['roomId']
         )
-
-    # def _get_stats_by(self, column):
-    #     column_widths = self.column_widths
-    #
-    #     if column == 'PERSON':
-    #         return 'Cannot get data for "PERSON" column'
-    #     elif column.UPPER() not in column_widths:
-    #         return 'Column "' + str(column) + '" does not exist'
-    #
-    #
-    #     for person in people:
-    #         if len(str(person['displayName'])) > len(column_widths['PERSON'] * ' '):
-    #             column_widths['PERSON'] = (len(str(person['displayName']))) + 1
-    #
-    #         if len(str(person['commands'])) > len(column_widths['COMMANDS ISSUED'] * ' '):
-    #             column_widths['COMMANDS ISSUED'] = (len(str(person['commands']))) + 1
 
     def _create_markdown_table(self, raw_dict):
         "Requires dictionary of lists"
@@ -178,14 +196,14 @@ class Bot():
                 if person['currentlyInQueue']:
                     time_enqueued = parser.parse(self.q.get_queue_member(person['sparkId'])['timeEnqueued'])
                     stats[target or 'TOTAL TIME IN QUEUE'].append(str(person['totalTimeInQueue'] + \
-                                    (datetime.datetime.now() - time_enqueued).seconds) + ' seconds')
+                                    round((datetime.datetime.now() - time_enqueued).total_seconds())) + ' seconds')
                 else:
                     stats[target or 'TOTAL TIME IN QUEUE'].append(str(person['totalTimeInQueue']) + ' seconds')
             if not target or target == 'TOTAL TIME AT QUEUE HEAD':
                 if len(queue) and queue[0]['personId'] == person['sparkId']:
                     time_enqueued = parser.parse(queue[0]['atHeadTime'])
                     stats[target or 'TOTAL TIME AT QUEUE HEAD'].append(str(person['totalTimeAtHead'] +
-                                         (datetime.datetime.now() - time_enqueued).seconds) + ' seconds')
+                                         round((datetime.datetime.now() - time_enqueued).total_seconds())) + ' seconds')
                 else:
                     stats[target or 'TOTAL TIME AT QUEUE HEAD'].append(str(person['totalTimeAtHead']) + ' seconds')
 
@@ -270,12 +288,24 @@ class Bot():
                 self.arg_exists(self.message_text)(data)
 
     def add_me(self, data):
+        """
+        Adds you to the back of the queue
+        """
         logger.debug("Executing add me")
         person = self.q.add_to_queue(data, self.project)
-        self.create_message("Adding '"+ str(person.displayName) + "'", data['roomId'])
-        self.list_queue(data)
+        if not person:
+            self.create_message(
+                'Failed to add to queue because queue is already at maximum of "' + str(QUEUE_THRESHOLD) + '"',
+                roomId=data['roomId']
+            )
+        else:
+            self.create_message("Adding '"+ str(person.displayName) + "'", data['roomId'])
+            self.list_queue(data)
 
     def list_queue(self, data):
+        """
+        Shows the queue without mutating it
+        """
         logger.debug("Executing list queue")
         queue = self.q.get_queue()
 
@@ -287,11 +317,14 @@ class Bot():
             people = 'There is no one in the queue'
 
         self.create_message(
-            'Current queue is:\n\n' + people,
+            'Current queue is:\n\n' + people + '\n\n' + self._how_long(),
             data['roomId']
         )
 
     def remove_me(self, data):
+        """
+        Removes the first occurence of you from the queue
+        """
         logger.debug("Executing remove me")
         person = self.api.people.get(data['personId'])
         self.create_message("Removing '"+ str(person.displayName) + "'", data['roomId'])
@@ -305,6 +338,9 @@ class Bot():
         return person['displayName'] + " (" + formatted_date.strftime(FORMAT_STRING) + ")"
 
     def show_admins(self, data):
+        """
+        Shows all the admins for the current project
+        """
         admin_names = [self.api.people.get(i).displayName for i in (self.admins.get_admins() + GLOBAL_ADMINS)]
         admins_nice = '- '.join([(i + '\n') for i in admin_names])
         self.create_message(
@@ -313,18 +349,36 @@ class Bot():
         )
 
     def help(self, data):
+        """
+        Displays a brief overview of queuebot and displays available user commands and their descriptions
+        """
         self.create_message(
             self.help_string,
             data['roomId']
         )
 
     def show_admin_commands(self, data):
+        """
+        Displays all the available commands available to only admins
+        """
+        command_strings = ''
+
+        for command, docstring in self._admin_commands_with_help_string().items():
+            docstring = self._clean_docstring(docstring)
+            command_strings += '- **' + command.replace("*", "\*") + (('** (' + docstring + ')\n') if docstring else '**\n')
+
         self.create_message(
-            'Available admin commands are:\n- ' + ('- '.join([(i + '\n') for i in self.supported_admin_commands])),
+            'Admin commands can be used in any room but are only accessible by an admin.\n\n'
+            'Available admin commands are:\n' + command_strings,
             roomId=data['roomId']
         )
 
     def register_bot(self, data):
+        """
+        Registers the room to the given project case-insensitive string.
+        The same project can be registered to multiple rooms.
+        But one room cannot be registered to multiple bots
+        """
         project = re.search('register bot to project (.*)', self.message_text).group(1)
         registrations = json.load(open(PROJECT_CONFIG, 'r'))
         self.project = project.upper()
@@ -338,12 +392,18 @@ class Bot():
         return registrations
 
     def show_registration(self, data):
+        """
+        Shows the project that the current room is registered to
+        """
         self.create_message(
             "QueueBot registration: " + str(self.project),
             data['roomId']
         )
 
     def show_command_history(self, data):
+        """
+        Shows the last X commands that were issued on this project where X is a non-negative integer
+        """
         number = int(re.search('show last (\d*) commands', self.message_text).group(1))
         commands = self.commands.get_commands(project=self.project)
         command_string = ''
@@ -360,6 +420,9 @@ class Bot():
         )
 
     def add_person(self, data):
+        """
+        Adds the tagged person to the back of the queue
+        """
         tagged = set(data['mentionedPeople']) - {self.api.people.me().id}
         if not tagged:
             self.create_message(
@@ -376,10 +439,19 @@ class Bot():
             person = self.people.add_person(person_data)
             logger.debug("Executing add person")
             person = self.q.add_to_queue(person_data, self.project)
-            self.create_message("Adding '"+ str(person.displayName) + "'", data['roomId'])
-            self.list_queue(data)
+            if not person:
+                self.create_message(
+                    'Failed to add to queue because queue is already at maximum of "' + str(QUEUE_THRESHOLD) + '"',
+                    roomId=data['roomId']
+                )
+            else:
+                self.create_message("Adding '"+ str(person.displayName) + "'", data['roomId'])
+                self.list_queue(data)
 
     def remove_person(self, data):
+        """
+        Removes the first occurence of the tagged person
+        """
         tagged = set(data['mentionedPeople']) - {self.api.people.me().id}
         if not tagged:
             self.create_message(
@@ -402,6 +474,9 @@ class Bot():
                 self.list_queue(data)
 
     def add_admin(self, data):
+        """
+        Adds the tagged person as an admin for the current project
+        """
         tagged = set(data['mentionedPeople']) - {self.api.people.me().id}
 
         if not tagged:
@@ -436,6 +511,9 @@ class Bot():
                 )
 
     def remove_admin(self, data):
+        """
+        Removes the tagged person as an admin for the current project
+        """
         tagged = set(data['mentionedPeople']) - {self.api.people.me().id}
 
         if not tagged:
@@ -471,6 +549,9 @@ class Bot():
                 )
 
     def show_people(self, data):
+        """
+        Shows the names of all the people that have issued a command to queuebot on this project
+        """
         people_on_project = self.people.get_people()
         display = "All people that have used this bot for project '" + str(self.project) + "' are:\n"
         if people_on_project:
@@ -483,6 +564,9 @@ class Bot():
         self.create_message(display, roomId=data['roomId'])
 
     def get_stats_csv(self, data):
+        """
+        Returns a CSV file attachment containing global statistics for the project
+        """
         stats = self._get_stats()
         rows = [list(stats.keys())] + [list(i) for i in zip(*stats.values())]
         with open(CSV_FILE_FORMAT.format(self.project), 'w') as csvfile:
@@ -499,28 +583,253 @@ class Bot():
     def _make_time_pretty(self, seconds):
         return str(datetime.timedelta(seconds=seconds))
 
+    def _how_long(self):
+        seconds = 0
+        flush_time = self.q.get_estimated_flush_time()
+
+        return 'Given that there are ' + str(len(self.q.get_queue())) + ' people in the queue. ' \
+                                                          'Estimated wait time from the back of the queue is:\n\n' + \
+               str(self._make_time_pretty(flush_time))
+
     def how_long(self, data):
         """
         Based on historical data, estimates how long it will take to get from the back of the queue
         to the front
-        :param data:
-        :return:
         """
-        seconds = 0
-        index = -1
+        self.create_message(self._how_long(), roomId=data['roomId'])
 
-        for index, member in enumerate(self.q.get_queue()):
-            seconds += self.q.get_average_time_at_queue_head(member['personId'])
-
+    def about(self, data):
+        """
+        Gets information about queuebot
+        """
         self.create_message(
-            'Given that there are ' + str(index + 1) + ' people in the queue. '
-                                                   'Estimated wait time from the back of the queue is:\n\n' +
-            str(self._make_time_pretty(seconds)),
+            self.about_string,
             roomId=data['roomId']
         )
 
-    def about(self, data):
+    def most_active_users(self, data):
+        """
+        Returns a list of the most active users for this project
+        """
+        most_active = self.q.get_most_active()
+        message = 'Most active user/s for project ' + str(self.project) + ' is:\n\n'
+        for person in most_active:
+            message += ("- " + person['displayName'] + " (" +
+                           str(self.q.get_queue_activity(person['sparkId'])) + " queue activities)") + "\n"
         self.create_message(
-            self.about_string,
+            message,
+            roomId=data['roomId']
+        )
+
+    def largest_queue_depth(self, data):
+        """
+        Shows the largest queue depth as well as the date at which the queue was that length
+        """
+        depth, time = self.q.get_largest_queue_depth()
+        self.create_message(
+            'Largest queue depth for ' + str(self.project) + ' is **' + str(depth) + '** at ' + str(time),
+            roomId=data['roomId']
+        )
+
+    def quickest_at_head_user(self, data):
+        """
+        Returns a list of the user/s that take the least time at the head of the queue
+        """
+        quickest = self.q.get_quickest_at_head()
+        message = 'Quickest at head user/s for project ' + str(self.project) + ' is:\n\n'
+
+        for person in quickest:
+            message += ("- " + person['displayName'] + " (" + self._make_time_pretty(
+                            self.q.get_average_time_at_queue_head(person['sparkId'])
+            ) + ")\n")
+        self.create_message(
+            message,
+            roomId=data['roomId']
+        )
+
+    def _convert_int_to_time(self, integer):
+        return datetime.datetime(year=1, month=1, day=1, hour=integer).strftime('%I%p')
+
+    def get_aggregate_stat_unit(self, data):
+        """
+        Gets aggregate, max, or min for a given statistic by a given unit. Returns an image of a graph
+        """
+        function_mapping = {
+            ('average', 'queue depth', 'hour'): self.get_average_queue_depth_hour,
+            ('max', 'queue depth', 'hour'): self.get_max_queue_depth_hour,
+            ('min', 'queue depth', 'hour'): self.get_min_queue_depth_hour,
+            ('min', 'flush time', 'hour'): self.get_min_flush_time_hour,
+            ('max', 'flush time', 'hour'): self.get_max_flush_time_hour,
+            ('average', 'flush time', 'hour'): self.get_average_flush_time_hour,
+        }
+        aggregate, stat, unit = re.search(
+            "show (average|max|min) (queue depth|flush time) by (hour|day)",
+            self.message_text
+        ).groups()
+
+        function_mapping.get(tuple([aggregate, stat, unit]), lambda data: None)(data)
+
+    def get_average_flush_time_hour(self, data):
+        self.q._update_save_global_stats()
+        filename = 'get_average_flush_time_hour_' + str(self.project) + '.png'
+        d = self.q.get_average_flush_time_by_hour()
+
+        reformatted = {}
+        for k, v in d.items():
+            reformatted[self._convert_int_to_time(int(k))] = v
+
+        pyplot.bar(range(len(reformatted)), reformatted.values(), align='center')
+        pyplot.title("Average Flush Time by Hour for '" + str(self.project) + "'")
+
+        def timeTicks(x, pos):
+            return str(datetime.timedelta(seconds=x))
+
+        formatter = matplotlib.ticker.FuncFormatter(timeTicks)
+        pyplot.axes().yaxis.set_major_formatter(formatter)
+
+        pyplot.xticks(range(len(reformatted)), reformatted.keys(), rotation=45)
+        pyplot.savefig(filename)
+        pyplot.gcf().clear()
+
+        self.api.messages.create(
+            files=[filename],
+            roomId=data['roomId']
+        )
+        os.remove(filename)
+
+    def get_min_queue_depth_hour(self, data):
+        filename = 'get_min_queue_depth_hour_' + str(self.project) + '.png'
+        d = self.q.get_min_queue_depth_by_hour()
+
+        reformatted = {}
+        for k, v in d.items():
+            reformatted[self._convert_int_to_time(int(k))] = v
+
+        pyplot.bar(range(len(reformatted)), reformatted.values(), align='center')
+        pyplot.title("Min Queue Depth by Hour for '" + str(self.project) + "'")
+        pyplot.xticks(range(len(reformatted)), reformatted.keys(), rotation=45)
+        pyplot.savefig(filename)
+        pyplot.gcf().clear()
+
+        self.api.messages.create(
+            files=[filename],
+            roomId=data['roomId']
+        )
+        os.remove(filename)
+
+    def get_max_flush_time_hour(self, data):
+        filename = 'get_max_flush_time_hour_' + str(self.project) + '.png'
+        d = self.q.get_max_flush_time_by_hour()
+
+        reformatted = {}
+        for k, v in d.items():
+            reformatted[self._convert_int_to_time(int(k))] = v
+
+        pyplot.bar(range(len(reformatted)), reformatted.values(), align='center')
+        pyplot.title("Max Flush Time by Hour for '" + str(self.project) + "'")
+
+        def timeTicks(x, pos):
+            return str(datetime.timedelta(seconds=x))
+
+        formatter = matplotlib.ticker.FuncFormatter(timeTicks)
+        pyplot.axes().yaxis.set_major_formatter(formatter)
+
+        pyplot.xticks(range(len(reformatted)), reformatted.keys(), rotation=45)
+        pyplot.savefig(filename)
+        pyplot.gcf().clear()
+
+        self.api.messages.create(
+            files=[filename],
+            roomId=data['roomId']
+        )
+        os.remove(filename)
+
+    def get_min_flush_time_hour(self, data):
+        filename = 'get_min_flush_time_hour_' + str(self.project) + '.png'
+        d = self.q.get_min_flush_time_by_hour()
+
+        reformatted = {}
+        for k, v in d.items():
+            reformatted[self._convert_int_to_time(int(k))] = v
+
+        pyplot.bar(range(len(reformatted)), reformatted.values(), align='center')
+        pyplot.title("Min Flush Time by Hour for '" + str(self.project) + "'")
+
+        def timeTicks(x, pos):
+            return str(datetime.timedelta(seconds=x))
+
+        formatter = matplotlib.ticker.FuncFormatter(timeTicks)
+        pyplot.axes().yaxis.set_major_formatter(formatter)
+
+        pyplot.xticks(range(len(reformatted)), reformatted.keys(), rotation=45)
+        pyplot.savefig(filename)
+        pyplot.gcf().clear()
+
+        self.api.messages.create(
+            files=[filename],
+            roomId=data['roomId']
+        )
+        os.remove(filename)
+
+    def get_max_queue_depth_hour(self, data):
+        filename = 'get_max_queue_depth_hour_' + str(self.project) + '.png'
+        d = self.q.get_max_queue_depth_by_hour()
+
+        reformatted = {}
+        for k, v in d.items():
+            reformatted[self._convert_int_to_time(int(k))] = v
+
+        pyplot.bar(range(len(reformatted)), reformatted.values(), align='center')
+        pyplot.title("Max Queue Depth by Hour for '" + str(self.project) + "'")
+        pyplot.xticks(range(len(reformatted)), reformatted.keys(), rotation=45)
+        pyplot.savefig(filename)
+        pyplot.gcf().clear()
+
+        self.api.messages.create(
+            files=[filename],
+            roomId=data['roomId']
+        )
+        os.remove(filename)
+
+
+    def get_average_queue_depth_hour(self, data):
+        filename = 'get_average_queue_depth_hour_' + str(self.project) + '.png'
+        d = self.q.get_average_queue_depth_by_hour()
+
+        reformatted = {}
+        for k, v in d.items():
+            reformatted[self._convert_int_to_time(int(k))] = v
+
+        pyplot.bar(range(len(reformatted)), reformatted.values(), align='center')
+        pyplot.title("Average Queue Depth by Hour for '" + str(self.project) + "'")
+        pyplot.xticks(range(len(reformatted)), reformatted.keys(), rotation=45)
+        pyplot.savefig(filename)
+        pyplot.gcf().clear()
+
+        self.api.messages.create(
+            files=[filename],
+            roomId=data['roomId']
+        )
+        os.remove(filename)
+
+    def show_version_number(self, data):
+        """
+        Shows the current version number
+        """
+        self.create_message(
+            VERSION,
+            roomId=data['roomId']
+        )
+
+    def show_release_notes(self, data):
+        """
+        Shows the release notes for all versions of queuebot
+        """
+        notes = json.load(open(RELEASE_NOTES))
+        message = ''
+        for version, notes in notes.items():
+            message += '**' + version + '**\n\n' + notes
+        self.create_message(
+            message,
             roomId=data['roomId']
         )

@@ -22,5 +22,7 @@ SUPPORTED_COMMANDS = [
     'help',
     'status',
     'how long',
-    'about'
+    'about',
+    'show version',
+    'show release notes'
 ]
