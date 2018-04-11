@@ -122,10 +122,10 @@ class Bot():
             return docstring
 
     def _commands_with_help_string(self):
-        return {k: v.__doc__ for k, v in self.supported_commands.items()}
+        return {k: v.__doc__ for k, v in sorted(self.supported_commands.items())}
 
     def _admin_commands_with_help_string(self):
-        return {k: v.__doc__ for k, v in self.supported_admin_commands.items()}
+        return {k: v.__doc__ for k, v in sorted(self.supported_admin_commands.items())}
 
     def status(self, data):
         """
@@ -282,7 +282,7 @@ class Bot():
             elif not self.arg_exists(self.message_text):
                 self.create_message(
                     "Unrecognized Command: '" + self.message_text.lower() + "'\n\n" +
-                    "Please use one of:\n- " + str('\n- '.join(self.supported_commands)),
+                    "Please use one of:\n- " + str('\n- '.join(sorted(self.supported_commands))),
                     data['roomId']
                 )
             else:

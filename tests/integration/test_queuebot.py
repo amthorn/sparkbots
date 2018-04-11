@@ -210,22 +210,19 @@ def test_queue_help_unregistered():
     assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
     assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
-               markdown="This bot is to be used to manage a queue for a given team. "
-                        "It can be used to get statistical information as well as man"
-                        "age an individual queue.\n\nThis QueueBot is registered to '"
-                        "UNIT_TEST'\n\nAvailable commands are:\n\n- **add me** (Adds "
-                        "you to the back of the queue)\n- **remove me** (Removes the "
-                        "first occurence of you from the queue)\n- **list** (Shows th"
-                        "e queue without mutating it)\n- **help** (Displays a brief ov"
-                        "erview of queuebot and displays available user commands and t"
-                        "heir descriptions)\n- **status** (Shows the current status of"
-                        " queuebot)\n- **how long** (Based on historical data, estimat"
-                        "es how long it will take to get from the back of the queue to"
-                        " the front)\n- **about** (Gets information about queuebot)\n-"
-                        " **show version** (Shows the current version number)\n- **sho"
-                        "w release notes** (Shows the release notes for all versions of"
-                        " queuebot)\n\nFor admins, use 'show admin commands' to see a l"
-                        "ist of admin commands",
+               markdown="This bot is to be used to manage a queue for a given team. It can be used "
+                        "to get statistical information as well as manage an individual queue.\n\n"
+                        "This QueueBot is registered to 'UNIT_TEST'\n\nAvailable commands are:\n\n-"
+                        " **about** (Gets information about queuebot)\n- **add me** (Adds you to"
+                        " the back of the queue)\n- **help** (Displays a brief overview of queuebo"
+                        "t and displays available user commands and their descriptions)\n- **how l"
+                        "ong** (Based on historical data, estimates how long it will take to get f"
+                        "rom the back of the queue to the front)\n- **list** (Shows the queue witho"
+                        "ut mutating it)\n- **remove me** (Removes the first occurence of you from "
+                        "the queue)\n- **show release notes** (Shows the release notes for all ver"
+                        "sions of queuebot)\n- **show version** (Shows the current version number)"
+                        "\n- **status** (Shows the current status of queuebot)\n\nFor admins, use '"
+                        "show admin commands' to see a list of admin commands",
                roomId='BLAH'
            ), "Sent message not correct"
     args, kwargs = json.dump.call_args
@@ -353,29 +350,29 @@ def test_admin_command_by_admin():
     assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
                markdown="Admin commands can be used in any room but are only accessible by an admin.\n\n"
-                        "Available admin commands are:\n- **show admin commands** (Displays all the avai"
-                        "lable commands available to only admins)\n- **show admins** (Shows all the admi"
-                        "ns for the current project)\n- **add admin (\\w+)** (Adds the tagged person as "
-                        "an admin for the current project)\n- **remove admin (\\w+)** (Removes the tagge"
-                        "d person as an admin for the current project)\n- **register bot to project .\\*"
-                        "** (Registers the room to the given project case-insensitive string. The same pr"
-                        "oject can be registered to multiple rooms. But one room cannot be registered to "
-                        "multiple bots)\n- **show registration** (Shows the project that the current room"
-                        " is registered to)\n- **show last (\\d\\*) commands** (Shows the last X commands"
-                        " that were issued on this project where X is a non-negative integer)\n- **show p"
-                        "eople** (Shows the names of all the people that have issued a command to queuebo"
-                        "t on this project)\n- **show all stats as csv** (Returns a CSV file attachment c"
-                        "ontaining global statistics for the project)\n- **show all stats** (Returns a ma"
-                        "rkdown table of global statistics for the project)\n- **show stats for (.\\*)** "
-                        "(Returns a markdown table of global statistics for the given statistic)\n- **add"
-                        " person (.\\*)** (Adds the tagged person to the back of the queue)\n- **remove p"
-                        "erson (.\\*)** (Removes the first occurence of the tagged person)\n- **show most"
-                        " active users** (Returns a list of the most active users for this project)\n- **"
-                        "show largest queue depth** (Shows the largest queue depth as well as the date at"
-                        " which the queue was that length)\n- **show quickest users** (Returns a list of "
-                        "the user/s that take the least time at the head of the queue)\n- **show (average"
-                        "|max|min) (queue depth|flush time) by (hour|day)** (Gets aggregate, max, or min "
-                        "for a given statistic by a given unit. Returns an image of a graph)\n",
+                        "Available admin commands are:\n- **add admin (\\w+)** (Adds the tagged person a"
+                        "s an admin for the current project)\n- **add person (.\\*)** (Adds the tagged p"
+                        "erson to the back of the queue)\n- **register bot to project .\\*** (Registers t"
+                        "he room to the given project case-insensitive string. The same project can be re"
+                        "gistered to multiple rooms. But one room cannot be registered to multiple bots)\n"
+                        "- **remove admin (\\w+)** (Removes the tagged person as an admin for the current"
+                        " project)\n- **remove person (.\\*)** (Removes the first occurence of the tagged"
+                        " person)\n- **show (average|max|min) (queue depth|flush time) by (hour|day)** (G"
+                        "ets aggregate, max, or min for a given statistic by a given unit. Returns an imag"
+                        "e of a graph)\n- **show admin commands** (Displays all the available commands av"
+                        "ailable to only admins)\n- **show admins** (Shows all the admins for the current"
+                        " project)\n- **show all stats** (Returns a markdown table of global statistics fo"
+                        "r the project)\n- **show all stats as csv** (Returns a CSV file attachment contai"
+                        "ning global statistics for the project)\n- **show largest queue depth** (Shows th"
+                        "e largest queue depth as well as the date at which the queue was that length)\n- "
+                        "**show last (\\d\\*) commands** (Shows the last X commands that were issued on th"
+                        "is project where X is a non-negative integer)\n- **show most active users** (Retu"
+                        "rns a list of the most active users for this project)\n- **show people** (Shows t"
+                        "he names of all the people that have issued a command to queuebot on this project"
+                        ")\n- **show quickest users** (Returns a list of the user/s that take the least ti"
+                        "me at the head of the queue)\n- **show registration** (Shows the project that the"
+                        " current room is registered to)\n- **show stats for (.\\*)** (Returns a markdown "
+                        "table of global statistics for the given statistic)\n",
                roomId='BLAH'
            ), "Sent message not correct"
     args, kwargs = json.dump.call_args
@@ -1957,12 +1954,8 @@ def test_nonexistent_command():
     from endpoints import queue, CiscoSparkAPI
     queue()
     assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
-    assert CiscoSparkAPI().messages.create.call_args == \
-           mock.call(
-               markdown="Unrecognized Command: 'foobar'\n\nPlease use one of:\n- add me\n- remove me\n"
-                        "- list\n- help\n- status\n- how long\n- about\n- show version\n- show release notes",
-               roomId='BLAH'
-           ), "Sent message not correct"
+    args, kwargs = CiscoSparkAPI().messages.create.call_args
+    assert 'Unrecognized Command' in kwargs['markdown'], "Sent message not correct"
 
     args, kwargs = json.dump.call_args_list[2]
     assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'foobar'
@@ -2006,35 +1999,6 @@ def test_add_person_no_tag():
 
     args, kwargs = json.dump.call_args_list[2]
     assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'add person UNIT_TEST_PERSON'
-
-
-@freeze_time("1980-01-01 12:00:00.000000")
-@with_request(data={
-      "id": "message-id",
-      "roomId": "BLAH",
-      "roomType": "group",
-      "text": "QueueBot foobar",
-      "personId": "test_nonexistent_command",
-      "mentionedPeople": [
-        "me_id"
-      ],
-      "created": "2018-04-02T14:23:08.086Z"
-    },
-    global_stats={'historicalData': {}}
-)
-def test_nonexistent_command():
-    from endpoints import queue, CiscoSparkAPI
-    queue()
-    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
-    assert CiscoSparkAPI().messages.create.call_args == \
-           mock.call(
-               markdown="Unrecognized Command: 'foobar'\n\nPlease use one of:\n- add me\n- remove me\n- list\n- help\n"
-                        "- status\n- how long\n- about\n- show version\n- show release notes",
-               roomId='BLAH'
-           ), "Sent message not correct"
-
-    args, kwargs = json.dump.call_args_list[2]
-    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'foobar'
 
 
 @freeze_time("1980-01-01 12:00:00.000000")
