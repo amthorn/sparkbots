@@ -804,8 +804,9 @@ class Bot():
         d = self.q.get_average_queue_depth_by_hour()
 
         reformatted = {}
-        for k, v in d.items():
-            reformatted[self._convert_int_to_time(int(k))] = v
+        while len(d):
+            k = str(min([int(i) for i in d]))
+            reformatted[self._convert_int_to_time(int(k))] = d.pop(k)
 
         pyplot.bar(range(len(reformatted)), reformatted.values(), align='center')
         pyplot.title("Average Queue Depth by Hour for '" + str(self.project) + "'")
@@ -835,7 +836,7 @@ class Bot():
         notes = json.load(open(RELEASE_NOTES))
         message = ''
         for version, notes in notes.items():
-            message += '**' + version + '**\n\n' + notes
+            message += '\n\n**' + version + '**\n\n' + notes
         self.create_message(
             message,
             roomId=data['roomId']

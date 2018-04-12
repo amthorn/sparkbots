@@ -4,7 +4,7 @@ from config import PROJECT_CONFIG, QUEUE_BOT
 from ciscosparkapi import CiscoSparkAPI
 
 api = CiscoSparkAPI(QUEUE_BOT)
-message = 'I am going to be updating queuebot APRIL 11 around 8pm. Expect downtime for about an hour'
+message = 'QueueBot is back up and on version 1.1.0; run "show release notes" for details.'
 
 # I don't want to accidently run it.
 if False:
