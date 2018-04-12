@@ -682,8 +682,9 @@ class Bot():
         d = self.q.get_average_flush_time_by_hour()
 
         reformatted = {}
-        for k, v in d.items():
-            reformatted[self._convert_int_to_time(int(k))] = v
+        while len(d):
+            k = str(min([int(i) for i in d]))
+            reformatted[self._convert_int_to_time(int(k))] = d.pop(k)
 
         pyplot.bar(range(len(reformatted)), reformatted.values(), align='center')
         pyplot.title("Average Flush Time by Hour for '" + str(self.project) + "'")
@@ -709,8 +710,9 @@ class Bot():
         d = self.q.get_min_queue_depth_by_hour()
 
         reformatted = {}
-        for k, v in d.items():
-            reformatted[self._convert_int_to_time(int(k))] = v
+        while len(d):
+            k = str(min([int(i) for i in d]))
+            reformatted[self._convert_int_to_time(int(k))] = d.pop(k)
 
         pyplot.bar(range(len(reformatted)), reformatted.values(), align='center')
         pyplot.title("Min Queue Depth by Hour for '" + str(self.project) + "'")
@@ -729,8 +731,9 @@ class Bot():
         d = self.q.get_max_flush_time_by_hour()
 
         reformatted = {}
-        for k, v in d.items():
-            reformatted[self._convert_int_to_time(int(k))] = v
+        while len(d):
+            k = str(min([int(i) for i in d]))
+            reformatted[self._convert_int_to_time(int(k))] = d.pop(k)
 
         pyplot.bar(range(len(reformatted)), reformatted.values(), align='center')
         pyplot.title("Max Flush Time by Hour for '" + str(self.project) + "'")
@@ -756,8 +759,9 @@ class Bot():
         d = self.q.get_min_flush_time_by_hour()
 
         reformatted = {}
-        for k, v in d.items():
-            reformatted[self._convert_int_to_time(int(k))] = v
+        while len(d):
+            k = str(min([int(i) for i in d]))
+            reformatted[self._convert_int_to_time(int(k))] = d.pop(k)
 
         pyplot.bar(range(len(reformatted)), reformatted.values(), align='center')
         pyplot.title("Min Flush Time by Hour for '" + str(self.project) + "'")
@@ -783,8 +787,9 @@ class Bot():
         d = self.q.get_max_queue_depth_by_hour()
 
         reformatted = {}
-        for k, v in d.items():
-            reformatted[self._convert_int_to_time(int(k))] = v
+        while len(d):
+            k = str(min([int(i) for i in d]))
+            reformatted[self._convert_int_to_time(int(k))] = d.pop(k)
 
         pyplot.bar(range(len(reformatted)), reformatted.values(), align='center')
         pyplot.title("Max Queue Depth by Hour for '" + str(self.project) + "'")
