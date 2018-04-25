@@ -6,7 +6,7 @@ from queuebot.decorators import with_request
 from unittest import mock
 from contextlib import contextmanager
 from tests.scaffolding import CAT_FACT, DAD_JOKE
-from app import VERSION, RELEASED, AUTHOR, EMAIL
+from app import VERSION, RELEASED, AUTHOR, EMAIL, QUEUE_THRESHOLD
 from freezegun import freeze_time
 from attrdict import AttrDict
 
@@ -18,6 +18,7 @@ def test_empty_data():
             queue()
 
 
+@freeze_time("1980-01-01 12:00:00.000000")
 @with_request(
     data=dict(mentionedPeople={1})
 )
@@ -47,6 +48,7 @@ def test_early_exception_production(mock_production):
     CiscoSparkAPI.return_value = og
 
 
+@freeze_time("1980-01-01 12:00:00.000000")
 @with_request(data={
       "id": "message-id",
       "roomId": "BLAH",
@@ -75,6 +77,7 @@ def test_unregistered():
     assert commands[-1]['sparkId'] == 'message-id' and commands[-1]['command'] == 'list'
 
 
+@freeze_time("1980-01-01 12:00:00.000000")
 @with_request(data={
       "id": "message-id",
       "roomId": "BLAH",
@@ -88,7 +91,7 @@ def test_unregistered():
       ],
       "created": "2018-04-02T14:23:08.086Z"
     },
-    project={'BLAH': 'UNIT_TEST'}
+    project=[('UNIT_TEST', 'BLAH')]
 )
 def test_queue_status_ok():
     from endpoints import queue, CiscoSparkAPI
@@ -96,7 +99,12 @@ def test_queue_status_ok():
     assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
     assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
-               markdown='STATUS: OK',
+               markdown='STATUS: Thank you for asking, nobody really asks anymore. '
+                        'I guess I\'m okay, I just have a lot going on, you know? '
+                        'I\'m supposed to be managing all the queues for people and '
+                        'it\'s so hard because I have to be constantly paying attention '
+                        'to every chatroom at all hours of the day, I get no sleep and '
+                        'my social life has plumetted. But I guess I\'m:\n\n200 OK',
                roomId='BLAH'
            ), "Sent message not correct"
     args, kwargs = json.dump.call_args
@@ -104,6 +112,7 @@ def test_queue_status_ok():
     assert commands[-1]['sparkId'] == 'message-id' and commands[-1]['command'] == 'status'
 
 
+@freeze_time("1980-01-01 12:00:00.000000")
 @with_request(data={
       "id": "message-id",
       "roomId": "BLAH",
@@ -117,7 +126,7 @@ def test_queue_status_ok():
       ],
       "created": "2018-04-02T14:23:08.086Z"
     },
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
     queue=[]
 )
 def test_how_long_nonadmin_empty_queue():
@@ -148,7 +157,7 @@ def test_how_long_nonadmin_empty_queue():
       ],
       "created": "2018-04-02T14:23:08.086Z"
     },
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
     queue=[{
         "atHeadTime": "1980-01-01 11:30:00.000000",
         "displayName": "Blah",
@@ -157,14 +166,14 @@ def test_how_long_nonadmin_empty_queue():
     }],
     people=[{
         "sparkId": "test_how_long_nonadmin_nonempty_queue",
-        "displayName": "Ava Thorn",
+        "displayName": "Unit Test Person",
         "project": "UNIT_TEST",
         "totalTimeInQueue": 1000,
         "totalTimeAtHead": 900,
-        "currentlyInQueue": False,
+        "currentlyInQueue": True,
         "admin": False,
         "commands": 5,
-        "number_of_times_in_queue": 1,
+        "number_of_times_in_queue": 2,
         "added_to_queue": [
             "1980-01-01 11:00:00.000000"
         ],
@@ -177,8 +186,8 @@ def test_how_long_nonadmin_nonempty_queue():
     assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
     assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
-               markdown='Given that there are 1 people in the queue. '
-                        'Estimated wait time from the back of the queue is:\n\n0:15:00',
+               markdown='Given that there are 0 people ahead of you. '
+                        'Estimated wait time for "Unit Test Person" is:\n\n0:00:00',
                roomId='BLAH'
            ), "Sent message not correct"
     args, kwargs = json.dump.call_args
@@ -186,6 +195,7 @@ def test_how_long_nonadmin_nonempty_queue():
     assert commands[-1]['sparkId'] == 'message-id' and commands[-1]['command'] == 'how long'
 
 
+@freeze_time("1980-01-01 12:00:00.000000")
 @with_request(data={
       "id": "message-id",
       "roomId": "BLAH",
@@ -199,7 +209,7 @@ def test_how_long_nonadmin_nonempty_queue():
       ],
       "created": "2018-04-02T14:23:08.086Z"
     },
-    project={'BLAH': 'UNIT_TEST'}
+    project=[('UNIT_TEST', 'BLAH')]
 )
 def test_queue_help_unregistered():
     from endpoints import queue, CiscoSparkAPI
@@ -216,6 +226,7 @@ def test_queue_help_unregistered():
     assert commands[-1]['sparkId'] == 'message-id' and commands[-1]['command'] == 'help'
 
 
+@freeze_time("1980-01-01 12:00:00.000000")
 @with_request(data={
       "id": "message-id",
       "roomId": "BLAH",
@@ -229,7 +240,8 @@ def test_queue_help_unregistered():
       ],
       "created": "2018-04-02T14:23:08.086Z"
     },
-    project={'BLAH': 'UNIT_TEST'}
+    project=[('UNIT_TEST', 'BLAH')],
+    random=1
 )
 def test_cat_fact():
     from endpoints import queue, CiscoSparkAPI
@@ -250,6 +262,7 @@ def test_cat_fact():
     assert commands[-1]['sparkId'] == 'message-id' and commands[-1]['command'] == 'cat fact'
 
 
+@freeze_time("1980-01-01 12:00:00.000000")
 @with_request(data={
       "id": "message-id",
       "roomId": "BLAH",
@@ -263,7 +276,7 @@ def test_cat_fact():
       ],
       "created": "2018-04-02T14:23:08.086Z"
     },
-    project={'BLAH': 'UNIT_TEST'}
+    project=[('UNIT_TEST', 'BLAH')]
 )
 def test_dad_joke():
     from endpoints import queue, CiscoSparkAPI
@@ -284,6 +297,7 @@ def test_dad_joke():
     assert commands[-1]['sparkId'] == 'message-id' and commands[-1]['command'] == 'pun'
 
 
+@freeze_time("1980-01-01 12:00:00.000000")
 @with_request(data={
       "id": "message-id",
       "roomId": "BLAH",
@@ -297,7 +311,7 @@ def test_dad_joke():
       ],
       "created": "2018-04-02T14:23:08.086Z"
     },
-    project={'BLAH': 'UNIT_TEST'}
+    project=[('UNIT_TEST', 'BLAH')]
 )
 def test_admin_command_by_nonadmin():
     from endpoints import queue, CiscoSparkAPI
@@ -313,6 +327,7 @@ def test_admin_command_by_nonadmin():
     assert commands[-1]['sparkId'] == 'message-id' and commands[-1]['command'] == 'show admin commands'
 
 
+@freeze_time("1980-01-01 12:00:00.000000")
 @with_request(data={
       "id": "message-id",
       "roomId": "BLAH",
@@ -326,7 +341,7 @@ def test_admin_command_by_nonadmin():
       ],
       "created": "2018-04-02T14:23:08.086Z"
     },
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
     admins=['admin']
 )
 def test_admin_command_by_admin():
@@ -341,6 +356,7 @@ def test_admin_command_by_admin():
     assert commands[-1]['sparkId'] == 'message-id' and commands[-1]['command'] == 'show admin commands'
 
 
+@freeze_time("1980-01-01 12:00:00.000000")
 @with_request(data={
       "id": "message-id",
       "roomId": "BLAH",
@@ -354,7 +370,7 @@ def test_admin_command_by_admin():
       ],
       "created": "2018-04-02T14:23:08.086Z"
     },
-    project={'BLAH': 'UNIT_TEST'}
+    project=[('UNIT_TEST', 'BLAH')]
 )
 def test_list_empty():
     from endpoints import queue, CiscoSparkAPI
@@ -371,6 +387,7 @@ def test_list_empty():
     assert commands[-1]['sparkId'] == 'message-id' and commands[-1]['command'] == 'list'
 
 
+@freeze_time("1980-01-01 12:00:00.000000")
 @with_request(data={
       "id": "message-id",
       "roomId": "BLAH",
@@ -384,7 +401,7 @@ def test_list_empty():
       ],
       "created": "2018-04-02T14:23:08.086Z"
     },
-    project={'BLAH': 'UNIT_TEST'}
+    project=[('UNIT_TEST', 'BLAH')]
 )
 def test_list_empty():
     from endpoints import queue, CiscoSparkAPI
@@ -420,7 +437,7 @@ def test_list_empty():
       ],
       "created": "2018-04-02T14:23:08.086Z"
     },
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
     queue=[{
         "personId": "fooid",
         "timeEnqueued": "2018-04-06 12:34:45.678901",
@@ -442,14 +459,151 @@ def test_list_one_member():
     assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
     assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
-               markdown='Current queue is:\n\n1. Unit Test Display Name (12:34:45 PM on Fri, Apr 06)\n\n\n'
-                        'Given that there are 1 people in the queue. Estimated wait time from '
-                        'the back of the queue is:\n\n0:00:05',
+               markdown='Current queue on subproject "GENERAL" is:\n\n'
+                        '1. Unit Test Display Name (12:34:45 PM on Fri, Apr 06)\n\n\n'
+                        'Given that there is 1 person in the queue. '
+                        'Estimated wait time from the back of the queue is:\n\n0:00:05',
                roomId='BLAH'
            ), "Sent message not correct"
     args, kwargs = json.dump.call_args
     commands = args[0]
     assert commands[-1]['sparkId'] == 'message-id' and commands[-1]['command'] == 'list'
+
+
+@freeze_time("1980-01-01 12:00:00.000000")
+@with_request(data={
+      "id": "message-id",
+      "roomId": "BLAH",
+      "roomType": "group",
+      "text": "QueueBot list for subproject other_subproject",
+      "personId": "test_list_one_member_for_subproject",
+      "personEmail": "avthorn@cisco.com",
+      "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
+      "mentionedPeople": [
+        "me_id"
+      ],
+      "created": "2018-04-02T14:23:08.086Z"
+    },
+    project=[('UNIT_TEST', 'BLAH')],
+    queue=[{
+        "personId": "fooid",
+        "timeEnqueued": "2018-04-06 12:34:45.678901",
+        "displayName": "Unit Test Display Name",
+        "atHeadTime": "2018-04-06 12:31:26.851938"
+    }],
+    people=[
+        {
+            'sparkId': 'fooid',
+            'number_of_times_in_queue': 1,
+            'totalTimeAtHead': 5
+        }
+    ],
+    subprojects=['GENERAL', 'OTHER_SUBPROJECT']
+)
+def test_list_one_member_for_subproject():
+    from endpoints import queue, CiscoSparkAPI
+    queue()
+
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
+           mock.call(
+               markdown='Current queue on subproject "OTHER_SUBPROJECT" is:\n\n'
+                        '1. Unit Test Display Name (12:34:45 PM on Fri, Apr 06)\n\n\n'
+                        'Given that there is 1 person in the queue. Estimated wait time '
+                        'from the back of the queue is:\n\n0:00:05',
+               roomId='BLAH'
+           ), "Sent message not correct"
+    args, kwargs = json.dump.call_args
+    commands = args[0]
+    assert commands[-1]['sparkId'] == 'message-id' and commands[-1]['command'] == 'list'
+
+
+@freeze_time("1980-01-01 12:00:00.000000")
+@with_request(data={
+      "id": "message-id",
+      "roomId": "BLAH",
+      "roomType": "group",
+      "text": "QueueBot list",
+      "personId": "test_list_no_default_subproject",
+      "personEmail": "avthorn@cisco.com",
+      "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
+      "mentionedPeople": [
+        "me_id"
+      ],
+      "created": "2018-04-02T14:23:08.086Z"
+    },
+    project=[('UNIT_TEST', 'BLAH')],
+    queue=[{
+        "personId": "fooid",
+        "timeEnqueued": "2018-04-06 12:34:45.678901",
+        "displayName": "Unit Test Display Name",
+        "atHeadTime": "2018-04-06 12:31:26.851938"
+    }],
+    people=[
+        {
+            'sparkId': 'fooid',
+            'number_of_times_in_queue': 1,
+            'totalTimeAtHead': 5
+        }
+    ],
+    subprojects=['GENERAL', 'OTHER_SUBPROJECT'],
+    settings={
+        'default_subproject': None
+    }
+)
+def test_list_no_default_subproject():
+    from endpoints import queue, CiscoSparkAPI
+    queue()
+
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
+           mock.call(
+               markdown='There is no default subproject for project "UNIT_TEST". '
+                        'You must set a default subproject or specify a subproject.',
+               roomId='BLAH'
+           ), "Sent message not correct"
+
+
+@freeze_time("1980-01-01 12:00:00.000000")
+@with_request(data={
+      "id": "message-id",
+      "roomId": "BLAH",
+      "roomType": "group",
+      "text": "QueueBot list for subproject invalid",
+      "personId": "test_list_invalid_subproject",
+      "personEmail": "avthorn@cisco.com",
+      "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
+      "mentionedPeople": [
+        "me_id"
+      ],
+      "created": "2018-04-02T14:23:08.086Z"
+    },
+    project=[('UNIT_TEST', 'BLAH')],
+    queue=[{
+        "personId": "fooid",
+        "timeEnqueued": "2018-04-06 12:34:45.678901",
+        "displayName": "Unit Test Display Name",
+        "atHeadTime": "2018-04-06 12:31:26.851938"
+    }],
+    people=[
+        {
+            'sparkId': 'fooid',
+            'number_of_times_in_queue': 1,
+            'totalTimeAtHead': 5
+        }
+    ],
+    subprojects=['GENERAL', 'OTHER_SUBPROJECT'],
+)
+def test_list_invalid_subproject():
+    from endpoints import queue, CiscoSparkAPI
+    queue()
+
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
+           mock.call(
+               markdown='"INVALID" is not a subproject on project "UNIT_TEST"',
+               roomId='BLAH'
+           ), "Sent message not correct"
 
 
 @freeze_time("1980-01-01 12:00:00.000000")
@@ -466,7 +620,7 @@ def test_list_one_member():
       ],
       "created": "2018-04-02T14:23:08.086Z"
     },
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
     queue=[{
         "personId": "fooid",
         "timeEnqueued": "2018-04-06 12:34:45.678901",
@@ -497,11 +651,11 @@ def test_list_two_members():
     assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
     assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
-               markdown='Current queue is:\n\n'
+               markdown='Current queue on subproject "GENERAL" is:\n\n'
                         '1. Unit Test Display Name (12:34:45 PM on Fri, Apr 06)\n'
-                        '2. Unit Test Display Name 2 (12:34:45 PM on Sat, Apr 07)\n\n\n'
-                        'Given that there are 2 people in the queue. Estimated wait time '
-                        'from the back of the queue is:\n\n0:00:02.500000',
+                        '2. Unit Test Display Name 2 (12:34:45 PM on Sat, Apr 07)'
+                        '\n\n\nGiven that there are 2 people in the queue. '
+                        'Estimated wait time from the back of the queue is:\n\n0:00:02.500000',
                roomId='BLAH'
            ), "Sent message not correct"
     args, kwargs = json.dump.call_args
@@ -523,26 +677,40 @@ def test_list_two_members():
       ],
       "created": "2018-04-02T14:23:08.086Z"
     },
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
     queue=[],
-    global_stats={'historicalData':{'queues': {}, 'flush_times': {},
-                                    'mostActiveQueueUsers': {}, 'quickestAtHeadUsers': {}, 'largestQueueDepths': {},
-                                    'largestQueueDepthTimes': {}},
-                  'maxQueueDepthByHour': {}, 'minQueueDepthByHour': {}, 'minFlushTimeByHour': {}, 'maxFlushTimeByHour': {}, 'largestQueueDepth':   0, 'largestQueueDepthTime': '1980-01-01 10:00:00.000000',}
+    global_stats={
+        'historicalData': {
+            'queues': {},
+            'flush_times': {},
+            'mostActiveQueueUsers': {},
+            'quickestAtHeadUsers': {},
+            'largestQueueDepths': {},
+            'largestQueueDepthTimes': {}
+        },
+        'maxQueueDepthByHour': {},
+        'maxQueueDepthByDay': {},
+        'minQueueDepthByHour': {},
+        'minQueueDepthByDay': {},
+        'minFlushTimeByHour': {},
+        'minFlushTimeByDay': {},
+        'maxFlushTimeByHour': {},
+        'maxFlushTimeByDay': {},
+        'largestQueueDepth':   0,
+        'largestQueueDepthTime': '1980-01-01 10:00:00.000000',
+    }
 )
 def test_add_me_empty_queue():
     from endpoints import queue, CiscoSparkAPI
     queue()
 
-    assert len(CiscoSparkAPI().messages.create.call_args_list) == 2, "Too many messages sent"
-    assert CiscoSparkAPI().messages.create.call_args_list[0] == \
-        mock.call(markdown="Adding 'Unit Test Display Name'", roomId='BLAH')
-    assert CiscoSparkAPI().messages.create.call_args_list[1] == \
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
-               markdown='Current queue is:\n\n'
+               markdown='Adding "Unit Test Display Name"\n\nCurrent queue on subproject "GENERAL" is:\n\n'
                         '1. Unit Test Display Name (12:00:00 PM on Tue, Jan 01)\n\n\n'
-                        'Given that there are 1 people in the queue. Estimated wait time '
-                        'from the back of the queue is:\n\n0:00:00',
+                        'Given that there is 1 person in the queue. '
+                        'Estimated wait time from the back of the queue is:\n\n0:00:00',
                roomId='BLAH'
            ), "Sent message not correct"
     args, kwargs = json.dump.call_args_list[0]
@@ -569,17 +737,33 @@ def test_add_me_empty_queue():
       ],
       "created": "2018-04-02T14:23:08.086Z"
     },
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
     queue=[{
         "personId": "first-id",
         "timeEnqueued": "2018-04-06 12:31:22.458645",
         "displayName": "Unit Test Display Name 1",
         "atHeadTime": "1980-01-01 11:00:00.000000"
     }],
-    global_stats={'historicalData': {'queues': {}, 'flush_times': {}, 'mostActiveQueueUsers': {},
-                                     'quickestAtHeadUsers': {}, 'largestQueueDepths': {},
-                                    'largestQueueDepthTimes': {}},
-                  'maxQueueDepthByHour': {}, 'minQueueDepthByHour': {}, 'minFlushTimeByHour': {}, 'maxFlushTimeByHour': {}, 'largestQueueDepth':   0, 'largestQueueDepthTime': '1980-01-01 10:00:00.000000'},
+    global_stats={
+        'historicalData': {
+            'queues': {},
+            'flush_times': {},
+            'mostActiveQueueUsers': {},
+            'quickestAtHeadUsers': {},
+            'largestQueueDepths': {},
+            'largestQueueDepthTimes': {}
+        },
+        'maxQueueDepthByHour': {},
+        'minQueueDepthByHour': {},
+        'minFlushTimeByHour': {},
+        'maxFlushTimeByHour': {},
+        'maxQueueDepthByDay': {},
+        'minQueueDepthByDay': {},
+        'minFlushTimeByDay': {},
+        'maxFlushTimeByDay': {},
+        'largestQueueDepth':   0,
+        'largestQueueDepthTime': '1980-01-01 10:00:00.000000'
+    },
     people=[{
         'sparkId': 'first-id',
         'number_of_times_in_queue': 0,
@@ -595,15 +779,14 @@ def test_add_me_one_in_queue():
     from endpoints import queue, CiscoSparkAPI
     queue()
 
-    assert len(CiscoSparkAPI().messages.create.call_args_list) == 2, "Too many messages sent"
-    assert CiscoSparkAPI().messages.create.call_args_list[0] == \
-        mock.call(markdown="Adding 'Unit Test Display Name'", roomId='BLAH')
-    assert CiscoSparkAPI().messages.create.call_args_list[1] == \
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
-               markdown='Current queue is:\n\n1. Unit Test Display Name 1 (12:31:22 PM on Fri, Apr 06)\n'
+               markdown='Adding "Unit Test Display Name"\n\nCurrent queue on subproject "GENERAL" is:\n\n'
+                        '1. Unit Test Display Name 1 (12:31:22 PM on Fri, Apr 06)\n'
                         '2. Unit Test Display Name (12:00:00 PM on Tue, Jan 01)\n\n\n'
-                        'Given that there are 2 people in the queue. Estimated wait time from the '
-                        'back of the queue is:\n\n0:00:00',
+                        'Given that there are 2 people in the queue. Estimated wait time '
+                        'from the back of the queue is:\n\n0:00:00',
                roomId='BLAH'
            ), "Sent message not correct"
     args, kwargs = json.dump.call_args_list[0]
@@ -631,30 +814,44 @@ def test_add_me_one_in_queue():
       ],
       "created": "2018-04-02T14:23:08.086Z"
     },
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
     queue=[{
         "personId": "test_remove_me_one_in_queue",
         "timeEnqueued": "2018-04-06 12:31:22.458645",
         "displayName": "Unit Test Display Name",
         "atHeadTime": "2018-04-06 12:31:26.851938"
     }],
-    global_stats={'historicalData': {'queues': {}, 'flush_times': {}, 'mostActiveQueueUsers': {},
-                                     'quickestAtHeadUsers': {}, 'largestQueueDepths': {},
-                                    'largestQueueDepthTimes': {}},
-                  'maxQueueDepthByHour': {}, 'minQueueDepthByHour': {}, 'minFlushTimeByHour': {}, 'maxFlushTimeByHour': {}, 'largestQueueDepth':   0, 'largestQueueDepthTime': '1980-01-01 10:00:00.000000'}
+    global_stats={
+        'historicalData': {
+            'queues': {},
+            'flush_times': {},
+            'mostActiveQueueUsers': {},
+            'quickestAtHeadUsers': {},
+            'largestQueueDepths': {},
+            'largestQueueDepthTimes': {}
+        },
+        'maxQueueDepthByHour': {},
+        'minQueueDepthByHour': {},
+        'minFlushTimeByHour': {},
+        'maxFlushTimeByHour': {},
+        'maxQueueDepthByDay': {},
+        'minQueueDepthByDay': {},
+        'minFlushTimeByDay': {},
+        'maxFlushTimeByDay': {},
+        'largestQueueDepth':   0,
+        'largestQueueDepthTime': '1980-01-01 10:00:00.000000'
+    }
 )
 def test_remove_me_one_in_queue():
     from endpoints import queue, CiscoSparkAPI
     queue()
 
-    assert len(CiscoSparkAPI().messages.create.call_args_list) == 2, "Too many messages sent"
-    assert CiscoSparkAPI().messages.create.call_args_list[0] == \
-        mock.call(markdown="Removing 'Unit Test Display Name'", roomId='BLAH')
-    assert CiscoSparkAPI().messages.create.call_args_list[1] == \
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
-               markdown='Current queue is:\n\nThere is no one in the queue\n\n'
-                        'Given that there are 0 people in the queue. Estimated wait time from '
-                        'the back of the queue is:\n\n0:00:00',
+               markdown='Removing "Unit Test Display Name"\n\nCurrent queue on subproject "GENERAL" is:\n\n'
+                        'There is no one in the queue\n\nGiven that there are 0 people in the queue. '
+                        'Estimated wait time from the back of the queue is:\n\n0:00:00',
                roomId='BLAH'
            ), "Sent message not correct"
     args, kwargs = json.dump.call_args_list[0]
@@ -681,7 +878,7 @@ def test_remove_me_one_in_queue():
       ],
       "created": "2018-04-02T14:23:08.086Z"
     },
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
     queue=[{
         "personId": "test_remove_me_one_in_queue",
         "timeEnqueued": "2018-04-06 12:31:22.458645",
@@ -693,10 +890,26 @@ def test_remove_me_one_in_queue():
         "displayName": "Unit Test Display Name",
         "atHeadTime": None
     }],
-    global_stats={'historicalData': {'queues': {}, 'flush_times': {}, 'mostActiveQueueUsers': {},
-                                     'quickestAtHeadUsers': {}, 'largestQueueDepths': {},
-                                    'largestQueueDepthTimes': {}},
-                  'maxQueueDepthByHour': {}, 'minQueueDepthByHour': {}, 'minFlushTimeByHour': {}, 'maxFlushTimeByHour': {}, 'largestQueueDepth':   0, 'largestQueueDepthTime': '1980-01-01 10:00:00.000000'},
+    global_stats={
+        'historicalData': {
+            'queues': {},
+            'flush_times': {},
+            'mostActiveQueueUsers': {},
+            'quickestAtHeadUsers': {},
+            'largestQueueDepths': {},
+            'largestQueueDepthTimes': {}
+        },
+        'maxQueueDepthByHour': {},
+        'minQueueDepthByHour': {},
+        'minFlushTimeByHour': {},
+        'maxFlushTimeByHour': {},
+        'maxQueueDepthByDay': {},
+        'minQueueDepthByDay': {},
+        'minFlushTimeByDay': {},
+        'maxFlushTimeByDay': {},
+        'largestQueueDepth':   0,
+        'largestQueueDepthTime': '1980-01-01 10:00:00.000000'
+    },
     people=[{
         'sparkId': 'test_remove_me_one_in_queue2',
         'number_of_times_in_queue': 1,
@@ -711,14 +924,13 @@ def test_remove_me_two_in_queue_me_at_head():
     from endpoints import queue, CiscoSparkAPI
     queue()
 
-    assert len(CiscoSparkAPI().messages.create.call_args_list) == 2, "Too many messages sent"
-    assert CiscoSparkAPI().messages.create.call_args_list[0] == \
-        mock.call(markdown="Removing 'Unit Test Display Name'", roomId='BLAH')
-    assert CiscoSparkAPI().messages.create.call_args_list[1] == \
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
-               markdown='Current queue is:\n\n1. Unit Test Display Name (12:31:22 PM on Fri, Apr 06)\n\n\n'
-                        'Given that there are 1 people in the queue. Estimated wait time from the back of '
-                        'the queue is:\n\n0:00:30',
+               markdown='Removing "Unit Test Display Name"\n\nCurrent queue on subproject "GENERAL" is:\n\n'
+                        '1. Unit Test Display Name (12:31:22 PM on Fri, Apr 06)\n\n\n'
+                        'Given that there is 1 person in the queue. Estimated wait time '
+                        'from the back of the queue is:\n\n0:00:30',
                roomId='BLAH'
            ), "Sent message not correct"
     args, kwargs = json.dump.call_args_list[0]
@@ -745,7 +957,7 @@ def test_remove_me_two_in_queue_me_at_head():
       ],
       "created": "2018-04-02T14:23:08.086Z"
     },
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
     queue=[{
         "personId": "test_remove_me_three_in_queue_me_at_head",
         "timeEnqueued": "2018-04-06 12:31:22.458645",
@@ -762,10 +974,28 @@ def test_remove_me_two_in_queue_me_at_head():
         "displayName": "Unit Test Display Name",
         "atHeadTime": None
     }],
-    global_stats={'historicalData': {'queues': {'2018-04-06 12:31:22.458645': {}}, 'flush_times': {}, 'mostActiveQueueUsers': {},
-                                     'quickestAtHeadUsers': {}, 'largestQueueDepths': {},
-                                    'largestQueueDepthTimes': {}},
-                  'maxQueueDepthByHour': {}, 'minQueueDepthByHour': {}, 'minFlushTimeByHour': {}, 'maxFlushTimeByHour': {}, 'largestQueueDepth':   0, 'largestQueueDepthTime': '1980-01-01 10:00:00.000000'},
+    global_stats={
+        'historicalData': {
+            'queues': {
+                '2018-04-06 12:31:22.458645': {}
+            },
+            'flush_times': {},
+            'mostActiveQueueUsers': {},
+            'quickestAtHeadUsers': {},
+            'largestQueueDepths': {},
+            'largestQueueDepthTimes': {}
+        },
+        'maxQueueDepthByHour': {},
+        'minQueueDepthByHour': {},
+        'minFlushTimeByHour': {},
+        'maxFlushTimeByHour': {},
+        'maxQueueDepthByDay': {},
+        'minQueueDepthByDay': {},
+        'minFlushTimeByDay': {},
+        'maxFlushTimeByDay': {},
+        'largestQueueDepth':   0,
+        'largestQueueDepthTime': '1980-01-01 10:00:00.000000'
+    },
     people=[{
         'sparkId': 'test_remove_me_one_in_queue2',
         'number_of_times_in_queue': 1,
@@ -780,16 +1010,14 @@ def test_remove_me_three_in_queue_me_at_head():
     from endpoints import queue, CiscoSparkAPI
     queue()
 
-    assert len(CiscoSparkAPI().messages.create.call_args_list) == 2, "Too many messages sent"
-    assert CiscoSparkAPI().messages.create.call_args_list[0] == \
-        mock.call(markdown="Removing 'Unit Test Display Name'", roomId='BLAH')
-    assert CiscoSparkAPI().messages.create.call_args_list[1] == \
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
-               markdown='Current queue is:\n\n'
+               markdown='Removing "Unit Test Display Name"\n\nCurrent queue on subproject "GENERAL" is:\n\n'
                         '1. Unit Test Display Name (12:31:22 PM on Fri, Apr 06)\n'
                         '2. Unit Test Display Name (12:31:22 PM on Fri, Apr 06)\n\n\n'
-                        'Given that there are 2 people in the queue. Estimated wait time from the '
-                        'back of the queue is:\n\n0:01:00',
+                        'Given that there are 2 people in the queue. Estimated wait '
+                        'time from the back of the queue is:\n\n0:01:00',
                roomId='BLAH'
            ), "Sent message not correct"
 
@@ -817,7 +1045,7 @@ def test_remove_me_three_in_queue_me_at_head():
       ],
       "created": "2018-04-02T14:23:08.086Z"
     },
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
     queue=[{
         "personId": "foo",
         "timeEnqueued": "2018-04-06 12:31:22.458645",
@@ -830,15 +1058,13 @@ def test_remove_me_one_in_queue_but_not_caller():
     from endpoints import queue, CiscoSparkAPI
     queue()
 
-    assert len(CiscoSparkAPI().messages.create.call_args_list) == 2, "Too many messages sent"
-    assert CiscoSparkAPI().messages.create.call_args_list[0] == \
-        mock.call(markdown="Removing 'Unit Test Display Name'", roomId='BLAH')
-
-    assert CiscoSparkAPI().messages.create.call_args_list[1] == \
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
                markdown="ERROR: 'Unit Test Display Name' was not found in the queue",
                roomId='BLAH'
            ), "Sent message not correct"
+
     args, kwargs = json.dump.call_args_list[0]
     assert 'test_remove_me_one_in_queue_but_not_caller' in [i['sparkId'] for i in args[0]]
 
@@ -846,6 +1072,7 @@ def test_remove_me_one_in_queue_but_not_caller():
     assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'remove me'
 
 
+@freeze_time("1980-01-01 12:00:00.000000")
 @with_request(data={
       "id": "message-id",
       "roomId": "BLAH",
@@ -859,7 +1086,7 @@ def test_remove_me_one_in_queue_but_not_caller():
       ],
       "created": "2018-04-02T14:23:08.086Z"
     },
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
     queue=[{
         "personId": "foo",
         "timeEnqueued": "2018-04-06 12:31:22.458645",
@@ -877,7 +1104,7 @@ def test_show_admins():
 
     assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
-               markdown="Admins for 'UNIT_TEST' are:\n- Unit Test Display Name\n- Unit Test Display Name\n",
+               markdown="Admins for 'UNIT_TEST' are:\n- Unit Test Display Name (global)\n",
                roomId='BLAH'
            ), "Sent message not correct"
     args, kwargs = json.dump.call_args_list[0]
@@ -887,6 +1114,7 @@ def test_show_admins():
     assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'show admins'
 
 
+@freeze_time("1980-01-01 12:00:00.000000")
 @with_request(data={
       "id": "message-id",
       "roomId": "BLAH",
@@ -910,16 +1138,15 @@ def test_register_bot_by_admin():
     assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
     assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
-               markdown="Registered bot to project 'LALALA'",
+               markdown="ERROR: project \"LALALA\" has not been created.",
                roomId='BLAH'
            ), "Sent message not correct"
-    args, kwargs = json.dump.call_args_list[3]
-    assert {'BLAH': 'LALALA'} == args[0]
 
     args, kwargs = json.dump.call_args_list[2]
     assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'register bot to project lalala'
 
 
+@freeze_time("1980-01-01 12:00:00.000000")
 @with_request(data={
       "id": "message-id",
       "roomId": "BLAH",
@@ -942,7 +1169,7 @@ def test_register_bot_by_nonadmin():
     assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
     assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
-               markdown="You are not registered as an admin.",
+               markdown="ERROR: project \"SHOULD_NOT_WORK\" has not been created.",
                roomId='BLAH'
            ), "Sent message not correct"
     args, kwargs = json.dump.call_args_list[2]
@@ -950,6 +1177,7 @@ def test_register_bot_by_nonadmin():
            args[0][-1]['command'] == 'register bot to project should_not_work'
 
 
+@freeze_time("1980-01-01 12:00:00.000000")
 @with_request(data={
       "id": "message-id",
       "roomId": "BLAH",
@@ -965,7 +1193,8 @@ def test_register_bot_by_nonadmin():
     },
     global_stats={'historicalData': {}},
     admins=['test_get_all_stats'],
-    people=[]
+    people=[],
+    project=[('UNIT_TEST', 'BLAH')]
 )
 def test_get_all_stats():
     from endpoints import queue, CiscoSparkAPI
@@ -974,8 +1203,8 @@ def test_get_all_stats():
     assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
     assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
-               markdown="```\n        PERSON         | AVERAGE TIME AT QUEUE HEAD | AVERAGE TIME IN "
-                        "QUEUE | COMMANDS ISSUED | NUMBER OF TIMES IN QUEUE | TOTAL TIME AT QUEUE HEAD\n"
+               markdown="Showing stats for subproject \"GENERAL\"\n\n```\n        PERSON         | AVERAGE TIME AT QUEUE HEAD | AVERAGE TIME IN "
+                        "QUEUE | COMMANDS ISSUED | NUMBER OF TIMES IN QUEUE | TOTAL TIME AT QUEUE HEAD | "
                         "TOTAL TIME IN QUEUE\nUnit Test Display Name |         0 seconds          |     "
                         "  0 seconds       |        1        |            0             |        0 seco"
                         "nds         |      0 seconds     \n",
@@ -986,6 +1215,7 @@ def test_get_all_stats():
            args[0][-1]['command'] == 'show all stats as markdown'
 
 
+@freeze_time("1980-01-01 12:00:00.000000")
 @with_request(data={
       "id": "message-id",
       "roomId": "BLAH",
@@ -1001,16 +1231,21 @@ def test_get_all_stats():
     },
     global_stats={'historicalData': {}},
     admins=['test_show_registration'],
-    project={'BLAH': 'UNIT_TEST'}
+    project=[('UNIT_TEST', 'BLAH')]
 )
 def test_show_registration():
     from endpoints import queue, CiscoSparkAPI
     queue()
 
-    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
-    assert CiscoSparkAPI().messages.create.call_args == \
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 2, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args_list[0] == \
            mock.call(
                markdown="QueueBot registration: UNIT_TEST",
+               roomId='BLAH'
+           ), "Sent message not correct"
+    assert CiscoSparkAPI().messages.create.call_args_list[1] == \
+           mock.call(
+               markdown="Subprojects for project \"UNIT_TEST\" are:\n\n- GENERAL (DEFAULT)\n",
                roomId='BLAH'
            ), "Sent message not correct"
     args, kwargs = json.dump.call_args_list[2]
@@ -1033,7 +1268,7 @@ def test_show_registration():
     },
     global_stats={'historicalData': {}},
     admins=['test_show_last_10_commands'],
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
     commands=[{
         "sparkId": "unit_test1",
         "personId": "unit_test1",
@@ -1050,7 +1285,7 @@ def test_show_last_10_commands_1_command():
     assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
     assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
-               markdown="Last 10 commands are:\n"
+               markdown="Last 10 commands for subproject \"GENERAL\" are:\n"
                         "1. show last 10 commands (Unit Test Display Name executed at 12:00:00 PM on Tue, Jan 01)\n"
                         "2. add me (Ava Thorn executed at 01:41:22 PM on Mon, Apr 09)\n",
                roomId='BLAH'
@@ -1075,7 +1310,7 @@ def test_show_last_10_commands_1_command():
     },
     global_stats={'historicalData': {}},
     admins=['test_show_last_10_commands_15_command'],
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
     commands=[{
         "sparkId": "unit_test1",
         "personId": "unit_test1",
@@ -1092,7 +1327,7 @@ def test_show_last_10_commands_15_command():
     assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
     assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
-               markdown="Last 10 commands are:\n"
+               markdown="Last 10 commands for subproject \"GENERAL\" are:\n"
                         "1. show last 10 commands (Unit Test Display Name executed at 12:00:00 PM on Tue, Jan 01)\n"
                         "2. add me (Ava Thorn executed at 01:41:22 PM on Mon, Apr 09)\n"
                         "3. add me (Ava Thorn executed at 01:41:22 PM on Mon, Apr 09)\n"
@@ -1124,12 +1359,28 @@ def test_show_last_10_commands_15_command():
       ],
       "created": "2018-04-02T14:23:08.086Z"
     },
-    global_stats={'historicalData': {'queues': {}, 'flush_times': {}, 'mostActiveQueueUsers': {},
-                                     'quickestAtHeadUsers': {}, 'largestQueueDepths': {},
-                                    'largestQueueDepthTimes': {}},
-                  'maxQueueDepthByHour': {}, 'minQueueDepthByHour': {}, 'minFlushTimeByHour': {}, 'maxFlushTimeByHour': {}, 'largestQueueDepth':   0, 'largestQueueDepthTime': '1980-01-01 10:00:00.000000'},
+    global_stats={
+        'historicalData': {
+            'queues': {},
+            'flush_times': {},
+            'mostActiveQueueUsers': {},
+            'quickestAtHeadUsers': {},
+            'largestQueueDepths': {},
+            'largestQueueDepthTimes': {}
+        },
+        'maxQueueDepthByHour': {},
+        'minQueueDepthByHour': {},
+        'minFlushTimeByHour': {},
+        'maxFlushTimeByHour': {},
+        'maxQueueDepthByDay': {},
+        'minQueueDepthByDay': {},
+        'minFlushTimeByDay': {},
+        'maxFlushTimeByDay': {},
+        'largestQueueDepth': 0,
+        'largestQueueDepthTime': '1980-01-01 10:00:00.000000'
+    },
     admins=['test_add_person'],
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
     queue=[],
     mock_people={'unit_test_person': AttrDict({
         'displayName': 'Blah',
@@ -1142,17 +1393,13 @@ def test_add_person():
     from endpoints import queue, CiscoSparkAPI
     queue()
 
-    assert len(CiscoSparkAPI().messages.create.call_args_list) == 2, "Too many messages sent"
-    assert CiscoSparkAPI().messages.create.call_args_list[0] == \
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
-               markdown="Adding 'Blah'",
-               roomId='BLAH'
-           ), "Sent message not correct"
-    assert CiscoSparkAPI().messages.create.call_args_list[1] == \
-           mock.call(
-               markdown="Current queue is:\n\n1. Blah (12:00:00 PM on Tue, Jan 01)\n\n\n"
-                        "Given that there are 1 people in the queue. Estimated wait time from "
-                        "the back of the queue is:\n\n0:00:00",
+               markdown="Adding \"Blah\"\n\nCurrent queue on subproject \"GENERAL\" is:\n\n"
+                        "1. Blah (12:00:00 PM on Tue, Jan 01)\n\n\n"
+                        "Given that there is 1 person in the queue. Estimated wait "
+                        "time from the back of the queue is:\n\n0:00:00",
                roomId='BLAH'
            ), "Sent message not correct"
     args, kwargs = json.dump.call_args_list[5]
@@ -1184,7 +1431,7 @@ def test_add_person():
     },
     global_stats={'historicalData': {}},
     admins=['test_add_admin'],
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
     queue=[],
     mock_people={'unit_test_person': AttrDict({
         'displayName': 'New Admin',
@@ -1207,9 +1454,8 @@ def test_add_admin():
     assert CiscoSparkAPI().messages.create.call_args_list[1] == \
            mock.call(
                markdown="Admins for 'UNIT_TEST' are:\n"
-                        "- Unit Test Display Name\n"
-                        "- New Admin\n"
-                        "- Unit Test Display Name\n",
+                        "- New Admin\n\n"
+                        "- Unit Test Display Name (global)\n",
                roomId='BLAH'
            ), "Sent message not correct"
 
@@ -1237,7 +1483,7 @@ def test_add_admin():
     },
     global_stats={'historicalData': {}},
     admins=['test_add_admin_already_admin', 'unit_test_person'],
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
     queue=[],
     mock_people={'unit_test_person': AttrDict({
         'displayName': 'New Admin',
@@ -1278,7 +1524,7 @@ def test_add_admin_already_admin():
     },
     global_stats={'historicalData': {}},
     admins=['test_add_admin'],
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
     queue=[],
     mock_people={'unit_test_person': AttrDict({
         'displayName': 'New Admin',
@@ -1321,7 +1567,7 @@ def test_add_admin_no_tags():
     },
     global_stats={'historicalData': {}},
     admins=['test_add_admin_2_tags'],
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
     queue=[],
     mock_people={'unit_test_person': AttrDict({
         'displayName': 'New Admin',
@@ -1363,7 +1609,7 @@ def test_add_admin_2_tags():
     },
     global_stats={'historicalData': {}},
     admins=['test_remove_admin', 'unit_test_person'],
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
     queue=[],
     mock_people={'unit_test_person': AttrDict({
         'displayName': 'New Admin',
@@ -1386,8 +1632,7 @@ def test_remove_admin():
     assert CiscoSparkAPI().messages.create.call_args_list[1] == \
            mock.call(
                markdown="Admins for 'UNIT_TEST' are:\n"
-                        "- Unit Test Display Name\n"
-                        "- Unit Test Display Name\n",
+                        "- Unit Test Display Name (global)\n",
                roomId='BLAH'
            ), "Sent message not correct"
 
@@ -1415,7 +1660,7 @@ def test_remove_admin():
     },
     global_stats={'historicalData': {}},
     admins=['test_remove_admin'],
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
     queue=[],
     mock_people={'unit_test_person': AttrDict({
         'displayName': 'New Admin',
@@ -1458,7 +1703,7 @@ def test_remove_admin_not_an_admin():
     },
     global_stats={'historicalData': {}},
     admins=['test_remove_admin', 'unit_test_person'],
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
     queue=[],
     mock_people={'unit_test_person': AttrDict({
         'displayName': 'New Admin',
@@ -1499,7 +1744,7 @@ def test_remove_admin_2_tags():
     },
     global_stats={'historicalData': {}},
     admins=['test_remove_admin', 'unit_test_person'],
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
     queue=[],
     mock_people={'unit_test_person': AttrDict({
         'displayName': 'New Admin',
@@ -1539,12 +1784,28 @@ def test_remove_admin_no_tags():
       ],
       "created": "2018-04-02T14:23:08.086Z"
     },
-    global_stats={'historicalData': {'queues': {}, 'flush_times': {}, 'mostActiveQueueUsers': {},
-                                     'quickestAtHeadUsers': {}, 'largestQueueDepths': {},
-                                    'largestQueueDepthTimes': {}},
-                  'maxQueueDepthByHour': {}, 'minQueueDepthByHour': {}, 'minFlushTimeByHour': {}, 'maxFlushTimeByHour': {}, 'largestQueueDepth':   0, 'largestQueueDepthTime': '1980-01-01 10:00:00.000000'},
+    global_stats={
+        'historicalData': {
+            'queues': {},
+            'flush_times': {},
+            'mostActiveQueueUsers': {},
+            'quickestAtHeadUsers': {},
+            'largestQueueDepths': {},
+            'largestQueueDepthTimes': {}
+        },
+        'maxQueueDepthByHour': {},
+        'minQueueDepthByHour': {},
+        'minFlushTimeByHour': {},
+        'maxFlushTimeByHour': {},
+        'maxQueueDepthByDay': {},
+        'minQueueDepthByDay': {},
+        'minFlushTimeByDay': {},
+        'maxFlushTimeByDay': {},
+        'largestQueueDepth':   0,
+        'largestQueueDepthTime': '1980-01-01 10:00:00.000000'
+    },
     admins=['test_remove_person'],
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
     queue=[{
         "atHeadTime": "1980-01-01 11:00:00.000000",
         "displayName": "Ava Test",
@@ -1586,16 +1847,11 @@ def test_remove_person():
     from endpoints import queue, CiscoSparkAPI
     queue()
 
-    assert len(CiscoSparkAPI().messages.create.call_args_list) == 2, "Too many messages sent"
-    assert CiscoSparkAPI().messages.create.call_args_list[0] == \
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
-               markdown="Removing 'Blah'",
-               roomId='BLAH'
-           ), "Sent message not correct"
-    assert CiscoSparkAPI().messages.create.call_args_list[1] == \
-           mock.call(
-               markdown="Current queue is:\n\n1. Ava Test (11:00:00 AM on Tue, Jan 01)\n\n\n"
-                        "Given that there are 1 people in the queue. Estimated wait time from "
+               markdown="Removing \"Blah\"\n\nCurrent queue on subproject \"GENERAL\" is:\n\n1. Ava Test (11:00:00 AM on Tue, Jan 01)\n\n\n"
+                        "Given that there is 1 person in the queue. Estimated wait time from "
                         "the back of the queue is:\n\n0:00:00",
                roomId='BLAH'
            ), "Sent message not correct"
@@ -1628,7 +1884,7 @@ def test_remove_person():
     },
     global_stats={'historicalData': {}},
     admins=['test_remove_person_no_in_queue'],
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
     queue=[{
         "atHeadTime": "2018-04-09 14:25:26.538711",
         "displayName": "Ava Test",
@@ -1651,13 +1907,8 @@ def test_remove_person_no_in_queue():
     from endpoints import queue, CiscoSparkAPI
     queue()
 
-    assert len(CiscoSparkAPI().messages.create.call_args_list) == 2, "Too many messages sent"
-    assert CiscoSparkAPI().messages.create.call_args_list[0] == \
-           mock.call(
-               markdown="Removing 'Blah'",
-               roomId='BLAH'
-           ), "Sent message not correct"
-    assert CiscoSparkAPI().messages.create.call_args_list[1] == \
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
                markdown="ERROR: 'Blah' was not found in the queue",
                roomId='BLAH'
@@ -1683,7 +1934,7 @@ def test_remove_person_no_in_queue():
     },
     global_stats={'historicalData': {}},
     admins=['test_remove_person_no_tags'],
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
     queue=[{
         "atHeadTime": "2018-04-09 14:25:26.538711",
         "displayName": "Ava Test",
@@ -1729,7 +1980,7 @@ def test_remove_person_no_tags():
     },
     global_stats={'historicalData': {}},
     admins=['test_remove_person_2_tags'],
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
     queue=[{
         "atHeadTime": "2018-04-09 14:25:26.538711",
         "displayName": "Ava Test",
@@ -1773,7 +2024,7 @@ def test_remove_person_2_tags():
     },
     global_stats={'historicalData': {}},
     admins=['test_show_people'],
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
     people=[{
         "sparkId": "me_id",
         "displayName": "Ava Thorn"
@@ -1789,7 +2040,7 @@ def test_show_people():
     assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
     assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
-               markdown="All people that have used this bot for project 'UNIT_TEST' are:\n"
+               markdown="All people that have used this bot for subproject \"GENERAL\" on project \"UNIT_TEST\" are:\n"
                         "1. Ava Thorn\n"
                         "2. Ava Thorn2\n"
                         "3. Unit Test Display Name\n",
@@ -1800,31 +2051,31 @@ def test_show_people():
     assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'show people'
 
 
-@freeze_time("1980-01-01 12:00:00.000000")
-@with_request(data={
-      "id": "message-id",
-      "roomId": "BLAH",
-      "roomType": "group",
-      "text": "QueueBot doesnt matter",
-      "personId": "test_project_config_file_doesnt_exist",
-      "mentionedPeople": [
-        "me_id"
-      ],
-      "created": "2018-04-02T14:23:08.086Z"
-    },
-    global_stats={'historicalData': {}}
-)
-def test_no_files_exist():
-    from endpoints import queue, CiscoSparkAPI
-    with mock.patch("os.path.exists", return_value=False):
-        queue()
-
-    assert json.dump.call_args_list[0][0][0] == []
-    assert json.dump.call_args_list[1][0][0] == {}
-    assert len(json.dump.call_args_list[2][0][0]) == 1
-
-    args, kwargs = json.dump.call_args_list[4]
-    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'doesnt matter'
+# @freeze_time("1980-01-01 12:00:00.000000")
+# @with_request(data={
+#       "id": "message-id",
+#       "roomId": "BLAH",
+#       "roomType": "group",
+#       "text": "QueueBot doesnt matter",
+#       "personId": "test_project_config_file_doesnt_exist",
+#       "mentionedPeople": [
+#         "me_id"
+#       ],
+#       "created": "2018-04-02T14:23:08.086Z"
+#     },
+#     global_stats={'historicalData': {}}
+# )
+# def test_no_files_exist():
+#     from endpoints import queue, CiscoSparkAPI
+#     with mock.patch("os.path.exists", return_value=False):
+#         queue()
+#
+#     assert json.dump.call_args_list[1][0][0] == []
+#     assert json.dump.call_args_list[2][0][0] == {}
+#     assert len(json.dump.call_args_list[3][0][0]) == 1
+#
+#     args, kwargs = json.dump.call_args_list[5]
+#     assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'doesnt matter'
 
 
 @freeze_time("1980-01-01 12:00:00.000000")
@@ -1845,7 +2096,8 @@ def test_no_files_exist():
         "sparkId": "blahblah",
         "displayName": "display blah",
         "commands": 1,
-    }]
+    }],
+    project=[('UNIT_TEST', 'BLAH')]
 )
 def test_get_stats_for_commands_issued():
     from endpoints import queue, CiscoSparkAPI
@@ -1853,8 +2105,8 @@ def test_get_stats_for_commands_issued():
     assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
     assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
-               markdown="```\n        PERSON        \nCOMMANDS ISSUED\n     display blah      |"
-                        " Unit Test Display Name |        1       \n       1       \n",
+               markdown="Showing stats for subproject \"GENERAL\"\n\n```\n        PERSON         | COMMANDS ISSUED\n"
+                        "     display blah      |        1       \nUnit Test Display Name |        1       \n",
                roomId='BLAH'
            ), "Sent message not correct"
 
@@ -1875,7 +2127,8 @@ def test_get_stats_for_commands_issued():
       "created": "2018-04-02T14:23:08.086Z"
     },
     global_stats={'historicalData': {}},
-    admins=['test_get_stats_for_invalid_stat']
+    admins=['test_get_stats_for_invalid_stat'],
+    project=[('UNIT_TEST', 'BLAH')]
 )
 def test_get_stats_for_invalid_stat():
     from endpoints import queue, CiscoSparkAPI
@@ -1906,7 +2159,8 @@ def test_get_stats_for_invalid_stat():
       ],
       "created": "2018-04-02T14:23:08.086Z"
     },
-    global_stats={'historicalData': {}}
+    global_stats={'historicalData': {}},
+    project=[('UNIT_TEST', 'BLAH')]
 )
 def test_nonexistent_command():
     from endpoints import queue, CiscoSparkAPI
@@ -1935,7 +2189,7 @@ def test_nonexistent_command():
     },
     global_stats={'historicalData': {}},
     admins=['test_add_person_no_tag'],
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
     queue=[],
     mock_people={'unit_test_person': AttrDict({
         'displayName': 'Blah',
@@ -1977,7 +2231,7 @@ def test_add_person_no_tag():
     },
     global_stats={'historicalData': {}},
     admins=['test_add_person_2_tags'],
-    project={'BLAH': 'UNIT_TEST'}
+    project=[('UNIT_TEST', 'BLAH')]
 )
 def test_add_person_2_tags():
     from endpoints import queue, CiscoSparkAPI
@@ -2010,7 +2264,7 @@ def test_add_person_2_tags():
     },
     global_stats={'historicalData': {}},
     admins=['test_get_stats_as_csv'],
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
     people=[{
         "sparkId": "unit_test1",
         "displayName": "Blah",
@@ -2034,9 +2288,9 @@ def test_get_stats_as_csv():
     assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
     assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
-               markdown="Here are all the stats for project 'UNIT_TEST' as a csv",
+               markdown="Here are all the stats for subproject 'GENERAL' on project 'UNIT_TEST' as a csv",
                roomId='BLAH',
-               files=['UNIT_TEST-STATISTICS.csv']
+               files=['UNIT_TEST-GENERAL-STATISTICS.csv']
            ), "Sent message not correct"
 
     args, kwargs = json.dump.call_args_list[2]
@@ -2059,7 +2313,7 @@ def test_get_stats_as_csv():
     },
     global_stats={'historicalData': {}, 'mostActiveQueueUsers': ['unit_test1']},
     admins=['test_get_most_active_users'],
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
     people=[{
         "sparkId": "unit_test1",
         "displayName": "Blah",
@@ -2096,7 +2350,7 @@ def test_get_most_active_users():
     assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
     assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
-               markdown="Most active user/s for project UNIT_TEST is:\n\n- Blah (5 queue activities)\n",
+               markdown="Most active user/s for subproject \"GENERAL\" on project UNIT_TEST is:\n\n- Blah (5 queue activities)\n",
                roomId='BLAH',
            ), "Sent message not correct"
 
@@ -2118,9 +2372,17 @@ def test_get_most_active_users():
       ],
       "created": "2018-04-02T14:23:08.086Z"
     },
-    global_stats={'historicalData': {}, 'maxQueueDepthByHour': {}, 'minQueueDepthByHour': {}, 'minFlushTimeByHour': {}, 'maxFlushTimeByHour': {}, 'largestQueueDepth':   5, 'largestQueueDepthTime': '1970-01-01 12:00:00.000000'},
+    global_stats={
+        'historicalData': {},
+        'maxQueueDepthByHour': {},
+        'minQueueDepthByHour': {},
+        'minFlushTimeByHour': {},
+        'maxFlushTimeByHour': {},
+        'largestQueueDepth': 5,
+        'largestQueueDepthHour': '1970-01-01 12:00:00.000000'
+    },
     admins=['test_largest_queue_depth'],
-    project={'BLAH': 'UNIT_TEST'}
+    project=[('UNIT_TEST', 'BLAH')]
 )
 def test_largest_queue_depth():
     from endpoints import queue, CiscoSparkAPI
@@ -2129,7 +2391,8 @@ def test_largest_queue_depth():
     assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
     assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
-               markdown="Largest queue depth for UNIT_TEST is **5** at 1970-01-01 12:00:00.000000",
+               markdown="Largest queue depth for subproject \"GENERAL\" on project UNIT_TEST is:\n\n"
+                        "**5** at 1970-01-01 12:00:00",
                roomId='BLAH',
            ), "Sent message not correct"
 
@@ -2153,7 +2416,7 @@ def test_largest_queue_depth():
     },
     global_stats={'historicalData': {}, 'quickestAtHeadUsers': ['unit_test']},
     admins=['test_largest_queue_depth'],
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
     people=[{
         "sparkId": "unit_test",
         "displayName": "Blah2",
@@ -2170,7 +2433,7 @@ def test_quickest_at_head_user():
     assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
     assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
-               markdown="Quickest at head user/s for project UNIT_TEST is:\n\n- Blah2 (0:10:17)\n",
+               markdown="Quickest at head user/s for subproject \"GENERAL\" on project \"UNIT_TEST\" is:\n\n- Blah2 (0:10:17)\n",
                roomId='BLAH',
            ), "Sent message not correct"
 
@@ -2193,11 +2456,11 @@ def test_quickest_at_head_user():
       "created": "2018-04-02T14:23:08.086Z"
     },
     global_stats={'historicalData': {}, 'averageQueueDepthByHour': {
-        1: 5
+        '1': 5
     },
                   'quickestAtHeadUsers': ['unit_test']},
     admins=['test_show_average_queue_depth'],
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
 )
 def test_show_average_queue_depth():
     from endpoints import queue, CiscoSparkAPI
@@ -2206,12 +2469,258 @@ def test_show_average_queue_depth():
     assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
     assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
-               files=['get_average_queue_depth_hour_UNIT_TEST.png'],
+               files=['get_average_queue_depth_hour_UNIT_TEST_GENERAL.png'],
                roomId='BLAH',
            ), "Sent message not correct"
 
     args, kwargs = json.dump.call_args_list[2]
     assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'show average queue depth by hour'
+
+
+@freeze_time("1980-01-01 12:00:00.000000")
+@with_request(data={
+      "id": "message-id",
+      "roomId": "BLAH",
+      "roomType": "group",
+      "text": "QueueBot show average queue depth by day",
+      "personId": "test_show_average_queue_depth_day",
+      "personEmail": "avthorn@cisco.com",
+      "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
+      "mentionedPeople": [
+        "me_id"
+      ],
+      "created": "2018-04-02T14:23:08.086Z"
+    },
+    global_stats={
+        'historicalData': {},
+        'averageQueueDepthByDay': {
+            '0': 5
+        }
+    },
+    admins=['test_show_average_queue_depth_day'],
+    project=[('UNIT_TEST', 'BLAH')],
+)
+def test_show_average_queue_depth_day():
+    from endpoints import queue, CiscoSparkAPI
+    queue()
+
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
+           mock.call(
+               files=['get_average_queue_depth_day_UNIT_TEST_GENERAL.png'],
+               roomId='BLAH',
+           ), "Sent message not correct"
+
+    args, kwargs = json.dump.call_args_list[2]
+    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'show average queue depth by day'
+
+
+@freeze_time("1980-01-01 12:00:00.000000")
+@with_request(data={
+      "id": "message-id",
+      "roomId": "BLAH",
+      "roomType": "group",
+      "text": "QueueBot show min queue depth by day",
+      "personId": "test_show_min_queue_depth_day",
+      "personEmail": "avthorn@cisco.com",
+      "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
+      "mentionedPeople": [
+        "me_id"
+      ],
+      "created": "2018-04-02T14:23:08.086Z"
+    },
+    global_stats={
+        'historicalData': {},
+        'minQueueDepthByDay': {
+            '0': 0,
+        }
+    },
+    admins=['test_show_min_queue_depth_day'],
+    project=[('UNIT_TEST', 'BLAH')],
+)
+def test_show_min_queue_depth_day():
+    from endpoints import queue, CiscoSparkAPI
+    queue()
+
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
+           mock.call(
+               files=['get_min_queue_depth_day_UNIT_TEST_GENERAL.png'],
+               roomId='BLAH',
+           ), "Sent message not correct"
+
+    args, kwargs = json.dump.call_args_list[2]
+    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'show min queue depth by day'
+
+
+@freeze_time("1980-01-01 12:00:00.000000")
+@with_request(data={
+      "id": "message-id",
+      "roomId": "BLAH",
+      "roomType": "group",
+      "text": "QueueBot show max queue depth by day",
+      "personId": "test_show_max_queue_depth_day",
+      "personEmail": "avthorn@cisco.com",
+      "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
+      "mentionedPeople": [
+        "me_id"
+      ],
+      "created": "2018-04-02T14:23:08.086Z"
+    },
+    global_stats={
+        'historicalData': {},
+        'maxQueueDepthByDay': {
+            '0': 30,
+        }
+    },
+    admins=['test_show_max_queue_depth_day'],
+    project=[('UNIT_TEST', 'BLAH')],
+)
+def test_show_max_queue_depth_day():
+    from endpoints import queue, CiscoSparkAPI
+    queue()
+
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
+           mock.call(
+               files=['get_max_queue_depth_day_UNIT_TEST_GENERAL.png'],
+               roomId='BLAH',
+           ), "Sent message not correct"
+
+    args, kwargs = json.dump.call_args_list[2]
+    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'show max queue depth by day'
+
+
+@freeze_time("1980-01-01 12:00:00.000000")
+@with_request(data={
+      "id": "message-id",
+      "roomId": "BLAH",
+      "roomType": "group",
+      "text": "QueueBot show max flush time by day",
+      "personId": "test_show_max_flush_time_day",
+      "personEmail": "avthorn@cisco.com",
+      "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
+      "mentionedPeople": [
+        "me_id"
+      ],
+      "created": "2018-04-02T14:23:08.086Z"
+    },
+    global_stats={
+        'historicalData': {},
+        'maxFlushTimeByDay': {
+            '0': 400,
+            '1': 300,
+            '2': 450,
+            '3': 0,
+            '4': 0,
+            '5': 0,
+            '6': 0
+        }
+    },
+    admins=['test_show_max_flush_time_day'],
+    project=[('UNIT_TEST', 'BLAH')],
+)
+def test_show_max_flush_time_day():
+    from endpoints import queue, CiscoSparkAPI
+    queue()
+
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
+           mock.call(
+               files=['get_max_flush_time_day_UNIT_TEST_GENERAL.png'],
+               roomId='BLAH',
+           ), "Sent message not correct"
+
+    args, kwargs = json.dump.call_args_list[2]
+    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'show max flush time by day'
+
+
+@freeze_time("1980-01-01 12:00:00.000000")
+@with_request(data={
+      "id": "message-id",
+      "roomId": "BLAH",
+      "roomType": "group",
+      "text": "QueueBot show min flush time by day",
+      "personId": "test_show_min_flush_time_day",
+      "personEmail": "avthorn@cisco.com",
+      "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
+      "mentionedPeople": [
+        "me_id"
+      ],
+      "created": "2018-04-02T14:23:08.086Z"
+    },
+    global_stats={
+        'historicalData': {},
+        'minFlushTimeByDay': {
+            '0': 400,
+            '1': 300,
+            '2': 450,
+            '3': 0,
+            '4': 0,
+            '5': 0,
+            '6': 0
+        }
+    },
+    admins=['test_show_min_flush_time_day'],
+    project=[('UNIT_TEST', 'BLAH')],
+)
+def test_show_min_flush_time_day():
+    from endpoints import queue, CiscoSparkAPI
+    queue()
+
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
+           mock.call(
+               files=['get_min_flush_time_day_UNIT_TEST_GENERAL.png'],
+               roomId='BLAH',
+           ), "Sent message not correct"
+
+    args, kwargs = json.dump.call_args_list[2]
+    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'show min flush time by day'
+
+
+@freeze_time("1980-01-01 12:00:00.000000")
+@with_request(data={
+      "id": "message-id",
+      "roomId": "BLAH",
+      "roomType": "group",
+      "text": "QueueBot show average flush time by day",
+      "personId": "test_show_average_flush_time_day",
+      "personEmail": "avthorn@cisco.com",
+      "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
+      "mentionedPeople": [
+        "me_id"
+      ],
+      "created": "2018-04-02T14:23:08.086Z"
+    },
+    global_stats={
+        'historicalData': {},
+        'averageFlushTimeByDay': {
+            '0': 400,
+            '1': 300,
+            '2': 450,
+            '3': 0,
+            '4': 0,
+            '5': 0,
+            '6': 0
+        }
+    },
+    admins=['test_show_average_flush_time_day'],
+    project=[('UNIT_TEST', 'BLAH')],
+)
+def test_show_average_flush_time_day():
+    from endpoints import queue, CiscoSparkAPI
+    queue()
+
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
+           mock.call(
+               files=['get_average_flush_time_day_UNIT_TEST_GENERAL.png'],
+               roomId='BLAH',
+           ), "Sent message not correct"
+
+    args, kwargs = json.dump.call_args_list[2]
+    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'show average flush time by day'
 
 
 @freeze_time("1980-01-01 12:00:00.000000")
@@ -2233,7 +2742,7 @@ def test_show_average_queue_depth():
     }, 'maxQueueDepthByHour': {'0': 5},
                   'quickestAtHeadUsers': ['unit_test']},
     admins=['test_show_max_queue_depth'],
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
 )
 def test_show_max_queue_depth():
     from endpoints import queue, CiscoSparkAPI
@@ -2242,7 +2751,7 @@ def test_show_max_queue_depth():
     assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
     assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
-               files=['get_max_queue_depth_hour_UNIT_TEST.png'],
+               files=['get_max_queue_depth_hour_UNIT_TEST_GENERAL.png'],
                roomId='BLAH',
            ), "Sent message not correct"
 
@@ -2269,7 +2778,7 @@ def test_show_max_queue_depth():
     }, 'minQueueDepthByHour': {'0': 5},
                   'quickestAtHeadUsers': ['unit_test']},
     admins=['test_show_min_queue_depth'],
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
 )
 def test_show_min_queue_depth():
     from endpoints import queue, CiscoSparkAPI
@@ -2278,7 +2787,7 @@ def test_show_min_queue_depth():
     assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
     assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
-               files=['get_min_queue_depth_hour_UNIT_TEST.png'],
+               files=['get_min_queue_depth_hour_UNIT_TEST_GENERAL.png'],
                roomId='BLAH',
            ), "Sent message not correct"
 
@@ -2305,7 +2814,7 @@ def test_show_min_queue_depth():
     }, 'minFlushTimeByHour': {'0': 5},
                   'quickestAtHeadUsers': ['unit_test']},
     admins=['test_show_min_flush_time'],
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
 )
 def test_show_min_flush_time():
     from endpoints import queue, CiscoSparkAPI
@@ -2314,7 +2823,7 @@ def test_show_min_flush_time():
     assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
     assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
-               files=['get_min_flush_time_hour_UNIT_TEST.png'],
+               files=['get_min_flush_time_hour_UNIT_TEST_GENERAL.png'],
                roomId='BLAH',
            ), "Sent message not correct"
 
@@ -2341,7 +2850,7 @@ def test_show_min_flush_time():
     }, 'maxFlushTimeByHour': {'0': 5},
                   'quickestAtHeadUsers': ['unit_test']},
     admins=['test_show_max_flush_time'],
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
 )
 def test_show_max_flush_time():
     from endpoints import queue, CiscoSparkAPI
@@ -2350,7 +2859,7 @@ def test_show_max_flush_time():
     assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
     assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
-               files=['get_max_flush_time_hour_UNIT_TEST.png'],
+               files=['get_max_flush_time_hour_UNIT_TEST_GENERAL.png'],
                roomId='BLAH',
            ), "Sent message not correct"
 
@@ -2390,7 +2899,7 @@ def test_show_max_flush_time():
                   'maxQueueDepthByHour': {}, 'minQueueDepthByHour': {},
                   'maxFlushTimeByHour': {}, 'minFlushTimeByHour': {}},
     admins=['test_show_average_flush_time'],
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
 )
 def test_show_average_flush_time():
     from endpoints import queue, CiscoSparkAPI
@@ -2399,7 +2908,7 @@ def test_show_average_flush_time():
     assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
     assert CiscoSparkAPI().messages.create.call_args == \
            mock.call(
-               files=['get_average_flush_time_hour_UNIT_TEST.png'],
+               files=['get_average_flush_time_hour_UNIT_TEST_GENERAL.png'],
                roomId='BLAH',
            ), "Sent message not correct"
 
@@ -2423,7 +2932,7 @@ def test_show_average_flush_time():
     },
     global_stats={'historicalData': {}},
     admins=['test_show_version_number'],
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
 )
 def test_show_version_number():
     from endpoints import queue, CiscoSparkAPI
@@ -2445,7 +2954,7 @@ def test_show_version_number():
       "id": "message-id",
       "roomId": "BLAH",
       "roomType": "group",
-      "text": "QueueBot show release notes",
+      "text": "QueueBot show all release notes",
       "personId": "test_show_release_notes",
       "personEmail": "avthorn@cisco.com",
       "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
@@ -2456,7 +2965,7 @@ def test_show_version_number():
     },
     global_stats={'historicalData': {}},
     admins=['test_show_release_notes'],
-    project={'BLAH': 'UNIT_TEST'},
+    project=[('UNIT_TEST', 'BLAH')],
 )
 def test_show_release_notes():
     from endpoints import queue, CiscoSparkAPI
@@ -2464,7 +2973,7 @@ def test_show_release_notes():
     r_notes = json.load(open(RELEASE_NOTES))
     message = ''
     for version, notes in r_notes.items():
-        message += '**' + version + '**\n\n' + notes
+        message += '\n\n**' + version + '**\n\n' + notes
     queue()
 
     assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
@@ -2475,4 +2984,996 @@ def test_show_release_notes():
            ), "Sent message not correct"
 
     args, kwargs = json.dump.call_args_list[2]
-    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'show release notes'
+    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'show all release notes'
+
+
+@freeze_time("1980-01-01 12:00:00.000000")
+@with_request(data={
+      "id": "message-id",
+      "roomId": "BLAH",
+      "roomType": "group",
+      "text": "QueueBot show release notes for 1.1.0",
+      "personId": "test_show_release_notes",
+      "personEmail": "avthorn@cisco.com",
+      "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
+      "mentionedPeople": [
+        "me_id"
+      ],
+      "created": "2018-04-02T14:23:08.086Z"
+    },
+    global_stats={'historicalData': {}},
+    admins=['test_show_release_notes_for_valid'],
+    project=[('UNIT_TEST', 'BLAH')],
+)
+def test_show_release_notes_for_valid():
+    from endpoints import queue, CiscoSparkAPI
+    from app import RELEASE_NOTES
+    notes = json.load(open(RELEASE_NOTES))
+    message = '\n\n**1.1.0**\n\n' + notes['1.1.0']
+    queue()
+
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
+           mock.call(
+               markdown=message,
+               roomId='BLAH',
+           ), "Sent message not correct"
+
+    args, kwargs = json.dump.call_args_list[1]
+    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'show release notes for 1.1.0'
+
+
+@freeze_time("1980-01-01 12:00:00.000000")
+@with_request(data={
+      "id": "message-id",
+      "roomId": "BLAH",
+      "roomType": "group",
+      "text": "QueueBot show release notes for invalid.number",
+      "personId": "test_show_release_notes_for_invalid",
+      "personEmail": "avthorn@cisco.com",
+      "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
+      "mentionedPeople": [
+        "me_id"
+      ],
+      "created": "2018-04-02T14:23:08.086Z"
+    },
+    global_stats={'historicalData': {}},
+    admins=['test_show_release_notes_for_invalid'],
+    project=[('UNIT_TEST', 'BLAH')],
+)
+def test_show_release_notes_for_invalid():
+    from endpoints import queue, CiscoSparkAPI
+    from app import RELEASE_NOTES
+    notes = json.load(open(RELEASE_NOTES))
+    message = '"invalid.number" is not a valid release. Please use one of:\n\n- ' + '\n- '.join(notes.keys())
+    queue()
+
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
+           mock.call(
+               markdown=message,
+               roomId='BLAH',
+           ), "Sent message not correct"
+
+    args, kwargs = json.dump.call_args_list[2]
+    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'show release notes for invalid.number'
+
+
+@freeze_time("1980-01-01 12:00:00.000000")
+@with_request(data={
+      "id": "message-id",
+      "roomId": "BLAH",
+      "roomType": "group",
+      "text": "QueueBot show projects",
+      "personId": "test_show_projects",
+      "personEmail": "avthorn@cisco.com",
+      "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
+      "mentionedPeople": [
+        "me_id"
+      ],
+      "created": "2018-04-02T14:23:08.086Z"
+    },
+    global_stats={'historicalData': {}},
+    admins=['test_show_projects'],
+    project=[('UNIT_TEST', 'BLAH')],
+)
+def test_show_projects_not_global_admin():
+    from endpoints import queue, CiscoSparkAPI
+    queue()
+
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
+           mock.call(
+               markdown='You are not registered as a global admin.',
+               roomId='BLAH',
+           ), "Sent message not correct"
+
+    args, kwargs = json.dump.call_args_list[2]
+    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'show projects'
+
+
+@freeze_time("1980-01-01 12:00:00.000000")
+@with_request(data={
+      "id": "message-id",
+      "roomId": "BLAH",
+      "roomType": "group",
+      "text": "QueueBot show projects",
+      "personId": "Y2lzY29zcGFyazovL3VzL1BFT1BMRS9kODRkZjI1MS1iYmY3LTRlZTEtOTM1OS00Y2I0MGIyOTBhN2I",
+      "personEmail": "avthorn@cisco.com",
+      "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
+      "mentionedPeople": [
+        "me_id"
+      ],
+      "created": "2018-04-02T14:23:08.086Z"
+    },
+    global_stats={'historicalData': {}},
+    admins=['test_show_projects'],
+    project=[('UNIT_TEST', 'BLAH')],
+)
+def test_show_projects_is_global_admin():
+    from endpoints import queue, CiscoSparkAPI
+    queue()
+
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
+           mock.call(
+               markdown='Registered projects are:\n\n- UNIT_TEST (1 room/s; 1 subproject/s; 1980-01-01 12:00:00)\n',
+               roomId='BLAH',
+           ), "Sent message not correct"
+
+    args, kwargs = json.dump.call_args_list[2]
+    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'show projects'
+
+
+@freeze_time("1980-01-01 12:00:00.000000")
+@with_request(data={
+      "id": "message-id",
+      "roomId": "BLAH",
+      "roomType": "group",
+      "text": "QueueBot add me",
+      "personId": "test_add_me_queue_at_max",
+      "personEmail": "avthorn@cisco.com",
+      "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
+      "mentionedPeople": [
+        "me_id"
+      ],
+      "created": "2018-04-02T14:23:08.086Z"
+    },
+    global_stats={'historicalData':{'queues': {}, 'flush_times': {},
+                                    'mostActiveQueueUsers': {}, 'quickestAtHeadUsers': {}, 'largestQueueDepths': {},
+                                    'largestQueueDepthTimes': {}},
+                  'maxQueueDepthByHour': {}, 'minQueueDepthByHour': {}, 'minFlushTimeByHour': {}, 'maxFlushTimeByHour': {}, 'largestQueueDepth':   0, 'largestQueueDepthTime': '1980-01-01 10:00:00.000000',},
+    admins=['test_add_me_queue_at_max'],
+    project=[('UNIT_TEST', 'BLAH')],
+    queue=[{}] * QUEUE_THRESHOLD
+)
+def test_add_me_queue_at_max():
+    from endpoints import queue, CiscoSparkAPI
+    queue()
+
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
+           mock.call(
+               markdown='Failed to add to queue because queue is already at maximum of "' + str(QUEUE_THRESHOLD) + '"',
+               roomId='BLAH',
+           ), "Sent message not correct"
+
+    args, kwargs = json.dump.call_args_list[2]
+    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'add me'
+
+
+@freeze_time("1980-01-01 12:00:00.000000")
+@with_request(data={
+      "id": "message-id",
+      "roomId": "BLAH",
+      "roomType": "group",
+      "text": "QueueBot add person UNIT_TEST_PERSON",
+      "personId": "test_add_person_queue_at_max",
+      "personEmail": "avthorn@cisco.com",
+      "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
+      "mentionedPeople": [
+        "me_id",
+        "UNIT_TEST_PERSON_ID"
+      ],
+      "created": "2018-04-02T14:23:08.086Z"
+    },
+    global_stats={'historicalData':{'queues': {}, 'flush_times': {},
+                                    'mostActiveQueueUsers': {}, 'quickestAtHeadUsers': {}, 'largestQueueDepths': {},
+                                    'largestQueueDepthTimes': {}},
+                  'maxQueueDepthByHour': {}, 'minQueueDepthByHour': {}, 'minFlushTimeByHour': {}, 'maxFlushTimeByHour': {}, 'largestQueueDepth':   0, 'largestQueueDepthTime': '1980-01-01 10:00:00.000000',},
+    admins=['test_add_person_queue_at_max'],
+    project=[('UNIT_TEST', 'BLAH')],
+    queue=[{}] * QUEUE_THRESHOLD
+)
+def test_add_person_queue_at_max():
+    from endpoints import queue, CiscoSparkAPI
+    queue()
+
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
+           mock.call(
+               markdown='Failed to add to queue because queue is already at maximum of "' + str(QUEUE_THRESHOLD) + '"',
+               roomId='BLAH',
+           ), "Sent message not correct"
+
+    args, kwargs = json.dump.call_args_list[2]
+    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'add person UNIT_TEST_PERSON'
+
+
+@freeze_time("1980-01-01 12:00:00.000000")
+@with_request(data={
+      "id": "message-id",
+      "roomId": "BLAH",
+      "roomType": "group",
+      "text": "QueueBot create new project foobar",
+      "personId": "test_create_new_project",
+      "personEmail": "avthorn@cisco.com",
+      "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
+      "mentionedPeople": [
+        "me_id"
+      ],
+      "created": "2018-04-02T14:23:08.086Z"
+    },
+    admins=['test_create_new_project'],
+    project=[('UNIT_TEST', 'BLAH')],
+)
+def test_create_new_project():
+    from endpoints import queue, CiscoSparkAPI
+    queue()
+
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 2, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args_list[0] == \
+           mock.call(
+               markdown='Created new project \'FOOBAR\'.',
+               roomId='BLAH',
+           ), "Sent message not correct"
+    assert CiscoSparkAPI().messages.create.call_args_list[1] == \
+           mock.call(
+               markdown='Registered bot to project \'FOOBAR\'',
+               roomId='BLAH',
+           ), "Sent message not correct"
+
+    args, kwargs = json.dump.call_args_list[7]
+    assert tuple(['FOOBAR', 'BLAH']) in args[0]
+
+    args, kwargs = json.dump.call_args_list[2]
+    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'create new project foobar'
+
+
+@freeze_time("1980-01-01 12:00:00.000000")
+@with_request(data={
+      "id": "message-id",
+      "roomId": "BLAH",
+      "roomType": "group",
+      "text": "QueueBot delete project",
+      "personId": "test_delete_project",
+      "personEmail": "avthorn@cisco.com",
+      "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
+      "mentionedPeople": [
+        "me_id"
+      ],
+      "created": "2018-04-02T14:23:08.086Z"
+    },
+    admins=['test_delete_project'],
+    project=[('UNIT_TEST', 'BLAH')],
+)
+def test_delete_project():
+    from endpoints import queue, CiscoSparkAPI
+    queue()
+
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
+           mock.call(
+               markdown='Successfully deleted project \'UNIT_TEST\'',
+               roomId='BLAH',
+           ), "Sent message not correct"
+
+
+    args, kwargs = json.dump.call_args_list[3]
+    assert [] == args[0]
+
+    args, kwargs = json.dump.call_args_list[2]
+    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'delete project'
+
+
+@freeze_time("1980-01-01 12:00:00.000000")
+@with_request(data={
+      "id": "message-id",
+      "roomId": "BLAH",
+      "roomType": "group",
+      "text": "QueueBot list for all subprojects",
+      "personId": "test_list_queue_all_subprojects",
+      "personEmail": "avthorn@cisco.com",
+      "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
+      "mentionedPeople": [
+        "me_id"
+      ],
+      "created": "2018-04-02T14:23:08.086Z"
+    },
+    admins=['test_list_queue_all_subprojects'],
+    project=[('UNIT_TEST', 'BLAH')],
+)
+def test_list_queue_all_subprojects_only_general():
+    from endpoints import queue, CiscoSparkAPI
+    queue()
+
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
+           mock.call(
+               markdown='Current queue on subproject "GENERAL" is:\n\n'
+                        'There is no one in the queue\n\nGiven that there are 0 people in the queue. '
+                        'Estimated wait time from the back of the queue is:\n\n0:00:00',
+               roomId='BLAH',
+           ), "Sent message not correct"
+
+    args, kwargs = json.dump.call_args_list[2]
+    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'list for all subprojects'
+
+
+@freeze_time("1980-01-01 12:00:00.000000")
+@with_request(data={
+      "id": "message-id",
+      "roomId": "BLAH",
+      "roomType": "group",
+      "text": "QueueBot list for all subprojects",
+      "personId": "test_list_queue_all_subprojects_two_subprojects",
+      "personEmail": "avthorn@cisco.com",
+      "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
+      "mentionedPeople": [
+        "me_id"
+      ],
+      "created": "2018-04-02T14:23:08.086Z"
+    },
+    subprojects=['GENERAL', 'OTHER_SUBPROJECT'],
+    admins=['test_list_queue_all_subprojects_two_subprojects'],
+    project=[('UNIT_TEST', 'BLAH')],
+)
+def test_list_queue_all_subprojects_two_subprojects():
+    from endpoints import queue, CiscoSparkAPI
+    queue()
+
+    messages = [
+        'Current queue on subproject "OTHER_SUBPROJECT" is:\n\n'
+        'There is no one in the queue\n\nGiven that there are 0 people in the queue. '
+        'Estimated wait time from the back of the queue is:\n\n0:00:00',
+
+        'Current queue on subproject "GENERAL" is:\n\n'
+        'There is no one in the queue\n\nGiven that there are 0 people in the queue. '
+        'Estimated wait time from the back of the queue is:\n\n0:00:00'
+    ]
+
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 2, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args_list[0][1]['markdown'] in messages, "Sent message not correct"
+    assert CiscoSparkAPI().messages.create.call_args_list[1][1]['markdown'] in messages, "Sent message not correct"
+
+    args, kwargs = json.dump.call_args_list[2]
+    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'list for all subprojects'
+
+
+@freeze_time("1980-01-01 12:00:00.000000")
+@with_request(data={
+      "id": "message-id",
+      "roomId": "BLAH",
+      "roomType": "group",
+      "text": "QueueBot show strict regex",
+      "personId": "test_show_strict_regex_true",
+      "personEmail": "avthorn@cisco.com",
+      "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
+      "mentionedPeople": [
+        "me_id"
+      ],
+      "created": "2018-04-02T14:23:08.086Z"
+    },
+    admins=['test_show_strict_regex_true'],
+    project=[('UNIT_TEST', 'BLAH')],
+    settings={
+        'default_subproject': 'GENERAL',
+        'strict_regex': True
+    }
+)
+def test_show_strict_regex_true():
+    from endpoints import queue, CiscoSparkAPI
+    queue()
+
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
+           mock.call(
+               markdown='Strict regex for project "UNIT_TEST" is: True',
+               roomId='BLAH',
+           ), "Sent message not correct"
+
+    args, kwargs = json.dump.call_args_list[2]
+    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'show strict regex'
+
+
+@freeze_time("1980-01-01 12:00:00.000000")
+@with_request(data={
+      "id": "message-id",
+      "roomId": "BLAH",
+      "roomType": "group",
+      "text": "QueueBot show strict regex",
+      "personId": "test_show_strict_regex_false",
+      "personEmail": "avthorn@cisco.com",
+      "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
+      "mentionedPeople": [
+        "me_id"
+      ],
+      "created": "2018-04-02T14:23:08.086Z"
+    },
+    admins=['test_show_strict_regex_false'],
+    project=[('UNIT_TEST', 'BLAH')],
+    settings={
+        'default_subproject': 'GENERAL',
+        'strict_regex': False
+    }
+)
+def test_show_strict_regex_false():
+    from endpoints import queue, CiscoSparkAPI
+    queue()
+
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
+           mock.call(
+               markdown='Strict regex for project "UNIT_TEST" is: False',
+               roomId='BLAH',
+           ), "Sent message not correct"
+
+    args, kwargs = json.dump.call_args_list[2]
+    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'show strict regex'
+
+
+@freeze_time("1980-01-01 12:00:00.000000")
+@with_request(data={
+      "id": "message-id",
+      "roomId": "BLAH",
+      "roomType": "group",
+      "text": "QueueBot set strict regex to true",
+      "personId": "test_set_strict_regex_to_true",
+      "personEmail": "avthorn@cisco.com",
+      "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
+      "mentionedPeople": [
+        "me_id"
+      ],
+      "created": "2018-04-02T14:23:08.086Z"
+    },
+    admins=['test_set_strict_regex_to_true'],
+    project=[('UNIT_TEST', 'BLAH')],
+    settings={
+        'default_subproject': 'GENERAL',
+        'strict_regex': False
+    }
+)
+def test_set_strict_regex_to_true():
+    from endpoints import queue, CiscoSparkAPI
+    queue()
+
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
+           mock.call(
+               markdown='Strict regex for project "UNIT_TEST" is: True',
+               roomId='BLAH',
+           ), "Sent message not correct"
+
+    args, kwargs = json.dump.call_args_list[2]
+    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'set strict regex to true'
+
+
+@freeze_time("1980-01-01 12:00:00.000000")
+@with_request(data={
+      "id": "message-id",
+      "roomId": "BLAH",
+      "roomType": "group",
+      "text": "QueueBot set strict regex to false",
+      "personId": "test_set_strict_regex_to_false",
+      "personEmail": "avthorn@cisco.com",
+      "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
+      "mentionedPeople": [
+        "me_id"
+      ],
+      "created": "2018-04-02T14:23:08.086Z"
+    },
+    admins=['test_set_strict_regex_to_false'],
+    project=[('UNIT_TEST', 'BLAH')],
+    settings={
+        'default_subproject': 'GENERAL',
+        'strict_regex': True
+    }
+)
+def test_set_strict_regex_to_false():
+    from endpoints import queue, CiscoSparkAPI
+    queue()
+
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
+           mock.call(
+               markdown='Strict regex for project "UNIT_TEST" is: False',
+               roomId='BLAH',
+           ), "Sent message not correct"
+
+    args, kwargs = json.dump.call_args_list[2]
+    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'set strict regex to false'
+
+
+@freeze_time("1980-01-01 12:00:00.000000")
+@with_request(data={
+      "id": "message-id",
+      "roomId": "BLAH",
+      "roomType": "group",
+      "text": "QueueBot pun",
+      "personId": "test_pun_easter_rejection",
+      "personEmail": "avthorn@cisco.com",
+      "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
+      "mentionedPeople": [
+        "me_id"
+      ],
+      "created": "2018-04-02T14:23:08.086Z"
+    },
+    admins=['test_pun_easter_rejection'],
+    project=[('UNIT_TEST', 'BLAH')],
+    random=0.01
+)
+def test_pun_easter_rejection():
+    from endpoints import queue, CiscoSparkAPI
+    queue()
+
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
+           mock.call(
+               files=['queuebot/rejection_pic.jpg'],
+               roomId='BLAH',
+           ), "Sent message not correct"
+
+    args, kwargs = json.dump.call_args_list[2]
+    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'pun'
+
+
+@freeze_time("1980-01-01 12:00:00.000000")
+@with_request(data={
+      "id": "message-id",
+      "roomId": "BLAH",
+      "roomType": "group",
+      "text": "QueueBot cat fact",
+      "personId": "test_cat_easter_rejection",
+      "personEmail": "avthorn@cisco.com",
+      "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
+      "mentionedPeople": [
+        "me_id"
+      ],
+      "created": "2018-04-02T14:23:08.086Z"
+    },
+    admins=['test_cat_easter_rejection'],
+    project=[('UNIT_TEST', 'BLAH')],
+    random=0.01
+)
+def test_cat_easter_rejection():
+    from endpoints import queue, CiscoSparkAPI
+    queue()
+
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
+           mock.call(
+               files=['queuebot/rejection_pic.jpg'],
+               roomId='BLAH',
+           ), "Sent message not correct"
+
+    args, kwargs = json.dump.call_args_list[2]
+    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'cat fact'
+
+
+@freeze_time("1980-01-01 12:00:00.000000")
+@with_request(data={
+      "id": "message-id",
+      "roomId": "BLAH",
+      "roomType": "group",
+      "text": "QueueBot show admins",
+      "personId": "test_admin_command_unregistered",
+      "personEmail": "avthorn@cisco.com",
+      "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
+      "mentionedPeople": [
+        "me_id"
+      ],
+      "created": "2018-04-02T14:23:08.086Z"
+    },
+    admins=['test_admin_command_unregistered'],
+    project=[],
+)
+def test_admin_command_unregistered():
+    from endpoints import queue, CiscoSparkAPI
+    queue()
+
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
+           mock.call(
+               markdown='QueueBot is not registered to a project! Ask an admin to register this bot',
+               roomId='BLAH',
+           ), "Sent message not correct"
+
+    args, kwargs = json.dump.call_args_list[2]
+    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'show admins'
+
+
+@freeze_time("1980-01-01 12:00:00.000000")
+@with_request(data={
+      "id": "message-id",
+      "roomId": "BLAH",
+      "roomType": "group",
+      "text": "QueueBot create new subproject foobar",
+      "personId": "test_create_new_subproject",
+      "personEmail": "avthorn@cisco.com",
+      "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
+      "mentionedPeople": [
+        "me_id"
+      ],
+      "created": "2018-04-02T14:23:08.086Z"
+    },
+    admins=['test_create_new_subproject'],
+    project=[('UNIT_TEST', 'BLAH')],
+)
+def test_create_new_subproject():
+    from endpoints import queue, CiscoSparkAPI
+    import os
+    queue()
+
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 2, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args_list[0] == \
+           mock.call(
+               markdown='Successfully created new subproject "FOOBAR"',
+               roomId='BLAH',
+           ), "Sent message not correct"
+    assert CiscoSparkAPI().messages.create.call_args_list[1] == \
+           mock.call(
+               markdown='Subprojects for project "UNIT_TEST" are:\n\n- GENERAL (DEFAULT)\n',
+               roomId='BLAH',
+           ), "Sent message not correct"
+
+    assert 'queuebot/data/UNIT_TEST/FOOBAR' in [i[0][0] for i in os.makedirs.call_args_list]
+
+    args, kwargs = json.dump.call_args_list[2]
+    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'create new subproject foobar'
+
+
+@freeze_time("1980-01-01 12:00:00.000000")
+@with_request(data={
+      "id": "message-id",
+      "roomId": "BLAH",
+      "roomType": "group",
+      "text": "QueueBot delete subproject foobar",
+      "personId": "test_delete_subproject",
+      "personEmail": "avthorn@cisco.com",
+      "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
+      "mentionedPeople": [
+        "me_id"
+      ],
+      "created": "2018-04-02T14:23:08.086Z"
+    },
+    admins=['test_delete_subproject'],
+    project=[('UNIT_TEST', 'BLAH')],
+    subprojects=['GENERAL', 'FOOBAR']
+)
+def test_delete_subproject():
+    from endpoints import queue, CiscoSparkAPI
+    import shutil
+    queue()
+
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 2, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args_list[0] == \
+           mock.call(
+               markdown='Successfully deleted subproject "FOOBAR"',
+               roomId='BLAH',
+           ), "Sent message not correct"
+    assert CiscoSparkAPI().messages.create.call_args_list[1] == \
+           mock.call(
+               markdown='Subprojects for project "UNIT_TEST" are:\n\n- FOOBAR\n- GENERAL (DEFAULT)\n',
+               roomId='BLAH',
+           ), "Sent message not correct"
+
+    assert 'queuebot/data/UNIT_TEST/FOOBAR' == shutil.rmtree.call_args[0][0]
+
+    args, kwargs = json.dump.call_args_list[2]
+    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'delete subproject foobar'
+
+
+@freeze_time("1980-01-01 12:00:00.000000")
+@with_request(data={
+      "id": "message-id",
+      "roomId": "BLAH",
+      "roomType": "group",
+      "text": "QueueBot delete subproject general",
+      "personId": "test_delete_subproject",
+      "personEmail": "avthorn@cisco.com",
+      "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
+      "mentionedPeople": [
+        "me_id"
+      ],
+      "created": "2018-04-02T14:23:08.086Z"
+    },
+    admins=['test_delete_subproject'],
+    project=[('UNIT_TEST', 'BLAH')],
+    subprojects=['GENERAL', 'FOOBAR']
+)
+def test_delete_default_subproject():
+    from endpoints import queue, CiscoSparkAPI
+    import shutil
+    queue()
+
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
+           mock.call(
+               markdown='You cannot delete the default subproject.',
+               roomId='BLAH',
+           ), "Sent message not correct"
+
+    assert not shutil.rmtree.called
+
+    args, kwargs = json.dump.call_args_list[1]
+    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'delete subproject general'
+
+
+@freeze_time("1980-01-01 12:00:00.000000")
+@with_request(data={
+      "id": "message-id",
+      "roomId": "BLAH",
+      "roomType": "group",
+      "text": "QueueBot change default subproject to general",
+      "personId": "test_set_default_to_already_set",
+      "personEmail": "avthorn@cisco.com",
+      "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
+      "mentionedPeople": [
+        "me_id"
+      ],
+      "created": "2018-04-02T14:23:08.086Z"
+    },
+    admins=['test_set_default_to_already_set'],
+    project=[('UNIT_TEST', 'BLAH')],
+    subprojects=['GENERAL', 'FOOBAR']
+)
+def test_set_default_to_already_set():
+    from endpoints import queue, CiscoSparkAPI
+    queue()
+
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
+           mock.call(
+               markdown='Default subproject is already set to "GENERAL"',
+               roomId='BLAH',
+           ), "Sent message not correct"
+
+    args, kwargs = json.dump.call_args_list[2]
+    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'change default subproject to general'
+
+
+@freeze_time("1980-01-01 12:00:00.000000")
+@with_request(data={
+      "id": "message-id",
+      "roomId": "BLAH",
+      "roomType": "group",
+      "text": "QueueBot change default subproject to foobar",
+      "personId": "test_change_default_subproject_valid",
+      "personEmail": "avthorn@cisco.com",
+      "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
+      "mentionedPeople": [
+        "me_id"
+      ],
+      "created": "2018-04-02T14:23:08.086Z"
+    },
+    admins=['test_change_default_subproject_valid'],
+    project=[('UNIT_TEST', 'BLAH')],
+    subprojects=['GENERAL', 'FOOBAR']
+)
+def test_change_default_subproject_valid():
+    from endpoints import queue, CiscoSparkAPI
+    queue()
+
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 2, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args_list[0] == \
+           mock.call(
+               markdown='Default subproject changed to "FOOBAR"',
+               roomId='BLAH',
+           ), "Sent message not correct"
+    assert CiscoSparkAPI().messages.create.call_args_list[1] == \
+           mock.call(
+               markdown='Subprojects for project "UNIT_TEST" are:\n\n- FOOBAR (DEFAULT)\n- GENERAL\n',
+               roomId='BLAH',
+           ), "Sent message not correct"
+
+    args, kwargs = json.dump.call_args_list[3]
+    assert args[0]['default_subproject'] == 'FOOBAR'
+
+    args, kwargs = json.dump.call_args_list[2]
+    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'change default subproject to foobar'
+
+
+@freeze_time("1980-01-01 12:00:00.000000")
+@with_request(data={
+      "id": "message-id",
+      "roomId": "BLAH",
+      "roomType": "group",
+      "text": "QueueBot change default subproject to invalid",
+      "personId": "test_change_default_subproject_invalid",
+      "personEmail": "avthorn@cisco.com",
+      "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
+      "mentionedPeople": [
+        "me_id"
+      ],
+      "created": "2018-04-02T14:23:08.086Z"
+    },
+    admins=['test_change_default_subproject_invalid'],
+    project=[('UNIT_TEST', 'BLAH')],
+    subprojects=['GENERAL', 'FOOBAR']
+)
+def test_change_default_subproject_invalid():
+    from endpoints import queue, CiscoSparkAPI
+    queue()
+
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
+           mock.call(
+               markdown='Subproject "INVALID" does not exist on project "UNIT_TEST"',
+               roomId='BLAH',
+           ), "Sent message not correct"
+
+    args, kwargs = json.dump.call_args_list[2]
+    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'change default subproject to invalid'
+
+
+@freeze_time("1980-01-01 12:00:00.000000")
+@with_request(data={
+      "id": "message-id",
+      "roomId": "BLAH",
+      "roomType": "group",
+      "text": "QueueBot register bot to project valid",
+      "personId": "test_register_bot_to_valid_project",
+      "personEmail": "avthorn@cisco.com",
+      "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
+      "mentionedPeople": [
+        "me_id"
+      ],
+      "created": "2018-04-02T14:23:08.086Z"
+    },
+    admins=['test_register_bot_to_valid_project'],
+    project=[('UNIT_TEST', 'BLAH'), ('VALID', 'OTHERROOM')],
+    subprojects=['GENERAL', 'FOOBAR']
+)
+def test_register_bot_to_valid_project():
+    from endpoints import queue, CiscoSparkAPI
+    queue()
+
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
+           mock.call(
+               markdown='Successfully registered bot to project "VALID"',
+               roomId='BLAH',
+           ), "Sent message not correct"
+
+    assert ('VALID', 'BLAH') in json.dump.call_args_list[3][0][0]
+
+    args, kwargs = json.dump.call_args_list[2]
+    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'register bot to project valid'
+
+
+@freeze_time("1980-01-01 12:00:00.000000")
+@with_request(data={
+      "id": "message-id",
+      "roomId": "BLAH",
+      "roomType": "group",
+      "text": "QueueBot register bot to project valid",
+      "personId": "test_register_bot_to_valid_project_not_admin",
+      "personEmail": "avthorn@cisco.com",
+      "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
+      "mentionedPeople": [
+        "me_id"
+      ],
+      "created": "2018-04-02T14:23:08.086Z"
+    },
+    project=[('VALID', 'OTHERROOM')]
+)
+def test_register_bot_to_valid_project_not_admin():
+    from endpoints import queue, CiscoSparkAPI
+    queue()
+
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
+           mock.call(
+               markdown='ERROR: You are not registered as an admin on project "VALID"',
+               roomId='BLAH',
+           ), "Sent message not correct"
+
+    args, kwargs = json.dump.call_args_list[2]
+    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'register bot to project valid'
+
+
+@freeze_time("1980-01-01 12:00:00.000000")
+@with_request(data={
+      "id": "message-id",
+      "roomId": "BLAH",
+      "roomType": "group",
+      "text": "QueueBot register bot to project unit_test",
+      "personId": "test_register_bot_already_registered",
+      "personEmail": "avthorn@cisco.com",
+      "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
+      "mentionedPeople": [
+        "me_id"
+      ],
+      "created": "2018-04-02T14:23:08.086Z"
+    },
+    admins=['test_register_bot_already_registered'],
+    project=[('UNIT_TEST', 'BLAH')],
+    subprojects=['GENERAL', 'FOOBAR']
+)
+def test_register_bot_already_registered():
+    from endpoints import queue, CiscoSparkAPI
+    queue()
+
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
+           mock.call(
+               markdown='This bot is already registered to project \'UNIT_TEST\'',
+               roomId='BLAH',
+           ), "Sent message not correct"
+
+    args, kwargs = json.dump.call_args_list[2]
+    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'register bot to project unit_test'
+
+
+@freeze_time("1980-01-01 12:00:00.000000")
+@with_request(data={
+      "id": "message-id",
+      "roomId": "BLAH",
+      "roomType": "group",
+      "text": "QueueBot delete project",
+      "personId": "test_delete_project_unregistered",
+      "personEmail": "avthorn@cisco.com",
+      "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
+      "mentionedPeople": [
+        "me_id"
+      ],
+      "created": "2018-04-02T14:23:08.086Z"
+    },
+    admins=['test_delete_project_unregistered'],
+    project=[('UNIT_TEST', 'OTHERROOM')]
+)
+def test_delete_project_unregistered():
+    from endpoints import queue, CiscoSparkAPI
+    queue()
+
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
+           mock.call(
+               markdown='QueueBot is not registered to a project! Ask an admin to register this bot',
+               roomId='BLAH',
+           ), "Sent message not correct"
+
+    args, kwargs = json.dump.call_args_list[2]
+    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'delete project'
+
+
+@freeze_time("1980-01-01 12:00:00.000000")
+@with_request(data={
+      "id": "message-id",
+      "roomId": "BLAH",
+      "roomType": "group",
+      "text": "QueueBot create new project UNIT_TEST",
+      "personId": "test_create_project_already_exists",
+      "personEmail": "avthorn@cisco.com",
+      "html": "<p><spark-mention data-object-type=\"person\" data-object-id=\"me_id\">QueueBot</spark-mention> list</p>",
+      "mentionedPeople": [
+        "me_id"
+      ],
+      "created": "2018-04-02T14:23:08.086Z"
+    },
+    admins=['test_create_project_already_exists'],
+    project=[('UNIT_TEST', 'OTHERROOM')]
+)
+def test_create_project_already_exists():
+    from endpoints import queue, CiscoSparkAPI
+    queue()
+
+    assert len(CiscoSparkAPI().messages.create.call_args_list) == 1, "Too many messages sent"
+    assert CiscoSparkAPI().messages.create.call_args == \
+           mock.call(
+               markdown='ERROR: project \'UNIT_TEST\' already exists.',
+               roomId='BLAH',
+           ), "Sent message not correct"
+
+    args, kwargs = json.dump.call_args_list[2]
+    assert args[0][-1]['sparkId'] == 'message-id' and args[0][-1]['command'] == 'create new project UNIT_TEST'

@@ -27,8 +27,14 @@ class AdminManager:
     def get_admins(self):
         return self._admins
 
-    def is_admin(self, id):
-        return id in self._admins + GLOBAL_ADMINS
+    def is_admin(self, id, project=None):
+        if not project:
+            return id in GLOBAL_ADMINS + self._admins
+        else:
+            return id in json.load(open(ADMINS_FILE.format(project), 'r')) + GLOBAL_ADMINS
+
+    def is_global_admin(self, id):
+        return id in GLOBAL_ADMINS
 
     def _save(self):
         logger.debug(pprint.pformat(self._admins))

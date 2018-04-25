@@ -2,53 +2,46 @@ import glob
 import json
 import re
 import os
+import time
 
 from collections import defaultdict
+from config import DATA_FOLDER
 
-pickle_files = glob.glob("*.pickle")
+# pickle_files = glob.glob("queuebot/data/")
 
 FOR_REAL = True
 
-for file in pickle_files:
-    if file == 'admins.pickle':
-        for project, admins in json.load(open(file)).items():
-            if FOR_REAL:
-                os.makedirs('queuebot/data/' + str(project), exist_ok=True)
-                json.dump(admins, open('queuebot/data/' + str(project) + '/admins.pickle', 'w'), indent=4, separators=(',', ': '))
-    elif file == 'commands.pickle':
-        commands = defaultdict(list)
-        for command in json.load(open(file)):
-            cleaned = {k: v for k, v in command.items() if k != 'project'}
-            commands[command['project']].append(cleaned)
+proj_conf_file = 'queuebot/data/projects.pickle'
+new_project_config = []
 
-        for project, commands in commands.items():
-            if FOR_REAL:
-                os.makedirs('queuebot/data/' + str(project), exist_ok=True)
-                json.dump(commands, open('queuebot/data/' + str(project) + '/commands.pickle', 'w'), indent=4, separators=(',', ': '))
+for room, project in json.load(open(proj_conf_file)).items():
+    if FOR_REAL and os.path.exists(DATA_FOLDER.format(project)):
+        print(str(project) + ' -- ' + str(room))
+        new_project_config.append(tuple([project, room]))
 
-    elif file == 'people.pickle':
-        people = defaultdict(list)
-        for person in json.load(open(file)):
-            cleaned = {
-                k: v
-                for k, v in person.items()
-                if k != 'project'
-            }
-            cleaned['added_to_queue'] = cleaned.get('added_to_queue', [])
-            cleaned['removed_from_queue'] = cleaned.get('removed_from_queue', [])
-            people[person['project']].append(cleaned)
+if FOR_REAL:
+    json.dump(new_project_config, open(proj_conf_file, 'w'))
 
-        for project, project_people in people.items():
-            if FOR_REAL:
-                os.makedirs('queuebot/data/' + str(project), exist_ok=True)
-                json.dump(project_people, open('queuebot/data/' + str(project) + '/people.pickle', 'w'), indent=4, separators=(',', ': '))
-    elif file == 'projects.pickle':
+for project in os.listdir('queuebot/data'):
+    if project != 'projects.pickle':
+        print(project)
         if FOR_REAL:
-            os.makedirs('queuebot/data/' + str(project), exist_ok=True)
-            json.dump(json.load(open(file)), open('queuebot/data/projects.pickle', 'w'), indent=4, separators=(',', ': '))
-    else:
-        project = re.search("(.*?)\-queue.pickle", file).group(1)
-        if FOR_REAL:
-            os.makedirs('queuebot/data/' + str(project), exist_ok=True)
-            json.dump(json.load(open(file)), open('queuebot/data/' + str(project) + '/queue.pickle', 'w'),
-                      indent=4, separators=(',', ': '))
+            os.makedirs('queuebot/data/' + str(project) + '/GENERAL')
+            if os.path.exists('queuebot/data/' + str(project) + '/queue.pickle'):
+                os.rename('queuebot/data/' + str(project) + '/queue.pickle', 'queuebot/data/' + str(project) + '/GENERAL/queue.pickle')
+            if os.path.exists('queuebot/data/' + str(project) + '/global-stats.pickle'):
+                os.rename('queuebot/data/' + str(project) + '/global-stats.pickle', 'queuebot/data/' + str(project) + '/GENERAL/global-stats.pickle')
+                global_stats = json.load(open('queuebot/data/' + str(project) + '/GENERAL/global-stats.pickle'))
+                global_stats['maxQueueDepthByDay'] = {}
+                global_stats['minQueueDepthByDay'] = {}
+                global_stats['maxFlushTimeByDay'] = {}
+                global_stats['minFlushTimeByDay'] = {}
+                json.dump(global_stats, open('queuebot/data/' + str(project) + '/GENERAL/global-stats.pickle', 'w'))
+            if os.path.exists('queuebot/data/' + str(project) + '/people.pickle'):
+                os.rename('queuebot/data/' + str(project) + '/people.pickle', 'queuebot/data/' + str(project) + '/GENERAL/people.pickle')
+            if os.path.exists('queuebot/data/' + str(project) + '/commands.pickle'):
+                os.rename('queuebot/data/' + str(project) + '/commands.pickle', 'queuebot/data/' + str(project) + '/GENERAL/commands.pickle')
+            json.dump({
+                'default_subproject': 'GENERAL',
+                'strict_regex': True
+            }, open('queuebot/data/' + str(project) + '/settings.json', 'w'))

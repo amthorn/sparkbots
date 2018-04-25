@@ -8,3 +8,5 @@ pytest-cov==2.5.1
 numpy==1.12.1
 matplotlib==2.0.0
 attrdict==2.0.0
+APScheduler==2.1.2
+Flask-APScheduler==1.8.0

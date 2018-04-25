@@ -8,15 +8,30 @@ import json
 from functools import wraps, partial
 from unittest import mock
 from attrdict import AttrDict
-from config import PROJECT_CONFIG, QUEUE_FILE, PEOPLE_FILE, GLOBAL_STATS_FILE, COMMANDS_FILE, ADMINS_FILE
+from config import PROJECT_CONFIG, QUEUE_FILE, PEOPLE_FILE, GLOBAL_STATS_FILE, COMMANDS_FILE, ADMINS_FILE, SETTINGS_FILE, DATA_FOLDER
 from app import RELEASE_NOTES
 
 r_notes = json.load(open(RELEASE_NOTES))
 ME_ID = 'me_id'
 
-def with_request(data, project={}, queue=[], global_stats={}, people=[], commands=[], admins=[],
-                 mock_people={}):
+def with_request(
+        data,
+        project=[],
+        subprojects=['GENERAL'],
+        queue=[],
+        global_stats={},
+        people=[],
+        commands=[],
+        admins=[],
+        mock_people={},
+        settings={
+            'default_subproject': 'GENERAL',
+            'strict_regex': True
+        },
+        random=1
+):
     def load_side_effect(*args, **kwargs):
+        file_name = open.call_args_list[-1][0][0]
         files = {
             PROJECT_CONFIG: project,
             QUEUE_FILE: queue,
@@ -24,11 +39,10 @@ def with_request(data, project={}, queue=[], global_stats={}, people=[], command
             PEOPLE_FILE: people,
             COMMANDS_FILE: commands,
             ADMINS_FILE: admins,
-            RELEASE_NOTES: r_notes
+            RELEASE_NOTES: r_notes,
+            SETTINGS_FILE: settings
         }
-        file_name = open.call_args_list[-1][0][0]
-        return files.get([i for i in files if re.search(i.format(".*?"), file_name)][0])
-
+        return files.get([i for i in files if re.search(i.format(*[".*?"] * i.count("{}")), file_name)][0])
 
     def api_get_side_effect(*args, **kwargs):
         return mock_people.get(args[0], AttrDict({
@@ -39,10 +53,45 @@ def with_request(data, project={}, queue=[], global_stats={}, people=[], command
                      'id': ME_ID
                  }))
 
+    def mock_os_walk_side_effect(path, *args, **kwargs):
+        if path.endswith('sparkbots/queuebot/data'):
+            # Getting projects
+            return [[
+                path, # PATH
+                # FOLDERS
+                list(set(i[0] for i in project)),
+                # FILES
+                [
+                    '__init__.py',
+                    'admins.py',
+                    'commands.py',
+                    'decorators.py',
+                    'people.py',
+                    'projects.py',
+                    'queue.py',
+                    'rejection_pic.jpg'
+                ]
+            ]]
+        elif len(re.search(DATA_FOLDER.format(*["(.*)"] * DATA_FOLDER.count("{}")), path).groups()) == 1:
+            return [[
+                path,
+                # FOLDERS
+                subprojects,
+                # FILES
+                [
+                    'commands.pickle',
+                    'global-stats.pickle',
+                    'queue.pickle',
+                    'people.pickle'
+                ]
+            ]]
+        else:
+            return [[path, [], []]]
 
     def with_request_dec(func, *args, **kwargs):
         @wraps(func)
         @mock.patch('json.dump')
+        @mock.patch('os.walk', side_effect=mock_os_walk_side_effect)
         @mock.patch('json.load', side_effect=load_side_effect)
         @mock.patch('flask.request')
         @mock.patch('builtins.open')
@@ -51,8 +100,10 @@ def with_request(data, project={}, queue=[], global_stats={}, people=[], command
         @mock.patch('os.makedirs')
         @mock.patch('os.remove')
         @mock.patch('matplotlib.pyplot.savefig')
-        def closure(mock_savefig, mock_remove, mock_makedirs, mock_exists, mock_api, mock_open, mock_flask,
-                    mock_load, mock_dump, *args, **kwargs):
+        @mock.patch('shutil.rmtree')
+        @mock.patch('random.random', return_value=random)
+        def closure(mock_random, mock_rm_tree, mock_savefig, mock_remove, mock_makedirs, mock_exists,
+                    mock_api, mock_open, mock_flask, mock_load, mock_oswalk, mock_dump, *args, **kwargs):
             # mock exists
             mock_exists.return_value = True
 

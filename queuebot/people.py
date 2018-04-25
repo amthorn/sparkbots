@@ -7,30 +7,33 @@ from config import PEOPLE_FILE
 
 
 class PeopleManager:
-    def __init__(self, api, project):
+    def __init__(self, api, project, subproject):
         self._api = api
-        self._file = PEOPLE_FILE.format(project)
+        self._file = PEOPLE_FILE.format(project, '{}')
         self._project = project
+        self._subproject = subproject
+        self._people = {}
 
-        os.makedirs(os.path.dirname(os.path.realpath(self._file)), exist_ok=True)
-
-        if not os.path.exists(self._file):
-            self._people = []
-        else:
-            self._people = json.load(open(self._file, 'r'))
+        os.makedirs(os.path.dirname(os.path.dirname(os.path.realpath(self._file))), exist_ok=True)
 
     def get_people(self):
+
+        if not os.path.exists(self._file.format(self._subproject)):
+            self._people = []
+        else:
+            self._people = json.load(open(self._file.format(self._subproject), 'r'))
+
         return self._people
 
     def get_person(self, id):
-        for person in self._people:
+        for person in self.get_people():
             if id == person['sparkId']:
                 return person
         else:
             return {}
 
     def _save(self):
-        json.dump(self._people, open(self._file, 'w'), indent=4, separators=(',', ': '))
+        json.dump(self._people, open(self._file.format(self._subproject), 'w'), indent=4, separators=(',', ': '))
 
     def update_person(self, id, **kwargs):
         person = self.get_person(id=id)
