@@ -10,8 +10,8 @@ logger = logging.getLogger(LOGGER_CONFIG['NAME'])
 FORMAT_STRING = '%I:%M:%S %p on %a, %b %d'
 TIMEOUT = 5000
 CSV_FILE_FORMAT = '{}-{}-STATISTICS.csv'
-VERSION = '1.1.0'
-RELEASED = str(datetime.datetime(year=2017, month=4, day=11))
+VERSION = '1.2.0'
+RELEASED = str(datetime.datetime(year=2017, month=4, day=25))
 AUTHOR = 'Ava Thorn'
 EMAIL = 'avthorn@cisco.com'
 QUEUE_THRESHOLD = 50
