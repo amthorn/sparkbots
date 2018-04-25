@@ -930,7 +930,8 @@ def test_remove_me_two_in_queue_me_at_head():
                markdown='Removing "Unit Test Display Name"\n\nCurrent queue on subproject "GENERAL" is:\n\n'
                         '1. Unit Test Display Name (12:31:22 PM on Fri, Apr 06)\n\n\n'
                         'Given that there is 1 person in the queue. Estimated wait time '
-                        'from the back of the queue is:\n\n0:00:30',
+                        'from the back of the queue is:\n\n0:00:30\n\n'
+                        '<@personId:test_remove_me_one_in_queue2|Unit Test Display Name>, you\'re at the front of the queue!',
                roomId='BLAH'
            ), "Sent message not correct"
     args, kwargs = json.dump.call_args_list[0]
@@ -1017,7 +1018,8 @@ def test_remove_me_three_in_queue_me_at_head():
                         '1. Unit Test Display Name (12:31:22 PM on Fri, Apr 06)\n'
                         '2. Unit Test Display Name (12:31:22 PM on Fri, Apr 06)\n\n\n'
                         'Given that there are 2 people in the queue. Estimated wait '
-                        'time from the back of the queue is:\n\n0:01:00',
+                        'time from the back of the queue is:\n\n0:01:00\n\n'
+                        '<@personId:test_remove_me_one_in_queue2|Unit Test Display Name>, you\'re at the front of the queue!',
                roomId='BLAH'
            ), "Sent message not correct"
 
@@ -1852,7 +1854,8 @@ def test_remove_person():
            mock.call(
                markdown="Removing \"Blah\"\n\nCurrent queue on subproject \"GENERAL\" is:\n\n1. Ava Test (11:00:00 AM on Tue, Jan 01)\n\n\n"
                         "Given that there is 1 person in the queue. Estimated wait time from "
-                        "the back of the queue is:\n\n0:00:00",
+                        "the back of the queue is:\n\n0:00:00\n\n"
+                        "<@personId:ava_test_id|Ava Test>, you\'re at the front of the queue!",
                roomId='BLAH'
            ), "Sent message not correct"
     args, kwargs = json.dump.call_args_list[4]

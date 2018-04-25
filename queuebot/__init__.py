@@ -553,8 +553,14 @@ class Bot():
         else:
             message = ''
 
+        if after == COMMAND.REMOVE and self.q.get_head():
+            person = self.q.get_head()
+            tag = "<@personId:"+ person['personId'] + "|" + str(person['displayName']) + ">, you're at the front of the queue!"
+        else:
+            tag = None
+
         message += 'Current queue on subproject "' + str(self.subproject) + '" is:\n\n' + people + '\n\n' + \
-                   self._how_long()
+                   self._how_long() + ('\n\n' + tag if tag else '')
 
         self.create_message(
             message,

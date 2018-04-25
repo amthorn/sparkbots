@@ -233,10 +233,13 @@ class Queue:
                 'largestQueueDepth': -1,
                 'largestQueueDepthTime': None,
                 'maxQueueDepthByHour': {},
-                'maxQueueDepthByDay': {},
                 'minQueueDepthByHour': {},
                 'minFlushTimeByHour': {},
                 'maxFlushTimeByHour': {},
+                'maxQueueDepthByDay': {},
+                'maxFlushTimeByDay': {},
+                'minFlushTimeByDay': {},
+                'minQueueDepthByDay': {},
             }
         else:
             self._global_stats = json.load(open(self._global_stats_file, 'r'))
