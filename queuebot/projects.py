@@ -49,6 +49,18 @@ class ProjectManager:
     def get_projects(self):
         return set([i[0] for i in self._project_config])
 
+    def get_rooms(self, projectid=None):
+        if not os.path.exists(self._file):
+            return None
+        elif not projectid:
+            return None
+        else:
+            rooms = []
+            for project, room in self._project_config:
+                if projectid.upper() == project:
+                    rooms.append(room)
+            return rooms
+
     def get_subprojects(self, project=None):
 
         if not project and getattr(self, '_subprojects', None):
