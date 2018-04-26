@@ -55,12 +55,11 @@ class PeopleManager:
                 'email': api_person.emails[0],
                 'avatar': api_person.avatar,
                 'project': self._project,
-                'totalTimeInQueue': 0,  # microseconds
-                'totalTimeAtHead': 0,  # microseconds
                 'currentlyInQueue': False,  # microseconds
                 'admin': False,
                 'commands': 0,
-                'number_of_times_in_queue': 0,
+                'timesInQueue': [],
+                'timesAtHead': [],
                 'added_to_queue': [],
                 'removed_from_queue': []
             }

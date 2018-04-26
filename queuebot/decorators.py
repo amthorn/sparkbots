@@ -10,6 +10,7 @@ from unittest import mock
 from attrdict import AttrDict
 from config import PROJECT_CONFIG, QUEUE_FILE, PEOPLE_FILE, GLOBAL_STATS_FILE, COMMANDS_FILE, ADMINS_FILE, SETTINGS_FILE, DATA_FOLDER
 from app import RELEASE_NOTES
+import config
 
 r_notes = json.load(open(RELEASE_NOTES))
 ME_ID = 'me_id'
@@ -139,3 +140,34 @@ def with_request(
         return closure
 
     return with_request_dec
+
+
+def unit_test(func):
+    og_open = open
+
+    config.DATA_FOLDER = 'queuebot/unit_test_data/{}'
+    config.SUBPROJECT_FOLDER = config.DATA_FOLDER + '/{}'
+    config.QUEUE_FILE = config.SUBPROJECT_FOLDER + '/queue.pickle'
+    config.GLOBAL_STATS_FILE = config.SUBPROJECT_FOLDER + '/global-stats.pickle'
+    config.ADMINS_FILE = config.DATA_FOLDER + '/admins.pickle'
+    config.PEOPLE_FILE = config.SUBPROJECT_FOLDER + '/people.pickle'
+    config.COMMANDS_FILE = config.SUBPROJECT_FOLDER + '/commands.pickle'
+    config.WARNINGS_FILE = config.DATA_FOLDER + '/warnings.json'
+    config.SETTINGS_FILE = config.DATA_FOLDER + '/settings.json'
+
+    @wraps(func)
+    @mock.patch('endpoints.CiscoSparkAPI')
+    @mock.patch('random.random')
+    def mock_all(mock_random, mock_api, *args, **kwargs):
+
+        from queuebot import Bot
+        import endpoints
+
+        TOKEN = config.QUEUE_BOT if config.PRODUCTION else config.DEV_QUEUE_BOT
+        BOT = Bot(endpoints.CiscoSparkAPI(TOKEN), {
+            'roomId': 'UNIT_TEST_ROOMID'
+        })
+        BOT.initialize_data(project='UNIT_TEST_PROJECT', subproject='UNIT_TEST_SUBPROJECT')
+        return func(bot=BOT, *args, **kwargs)
+
+    return mock_all

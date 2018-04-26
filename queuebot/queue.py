@@ -2,6 +2,7 @@ import json
 import os
 import datetime
 import pprint
+import statistics
 
 from dateutil import parser
 from collections import defaultdict
@@ -39,22 +40,6 @@ class Queue:
         quickest_at_head = []
         quickest_head_time = -1
 
-        for person in self._people.get_people():
-            activity = self.get_queue_activity(id=person['sparkId'])
-            current_head_time = person['totalTimeAtHead']
-
-            if not most_active or most_activity < activity:
-                most_active = [person['sparkId']]
-                most_activity = activity
-            elif most_activity == activity:
-                most_active.append(person['sparkId'])
-            if current_head_time:
-                if quickest_head_time == -1 or current_head_time < quickest_head_time:
-                    quickest_at_head = [person['sparkId']]
-                    quickest_head_time = current_head_time
-                elif current_head_time == quickest_head_time:
-                    quickest_at_head.append(person['sparkId'])
-
         self._global_stats['mostActiveQueueUsers'] = most_active
         self._global_stats['historicalData']['mostActiveQueueUsers'][now] = most_active
 
@@ -65,153 +50,59 @@ class Queue:
 
         q_depth = -1
         q_depth_time = None
-        self._global_stats['averageQueueDepthByHour'] = defaultdict(dict)
-        self._global_stats['averageQueueDepthByDay'] = defaultdict(dict)
-
+        self._global_stats['queueDepth'] = defaultdict(dict)
+        self._global_stats['queueDepth']['hour'] = defaultdict(list)
+        self._global_stats['queueDepth']['day'] = defaultdict(list)
 
         for time, queue in self._global_stats['historicalData']['queues'].items():
-            if self._global_stats['averageQueueDepthByHour'][str(parser.parse(time).hour)] == {}:
-                self._global_stats['averageQueueDepthByHour'][str(parser.parse(time).hour)]['total'] = len(queue)
-                self._global_stats['averageQueueDepthByHour'][str(parser.parse(time).hour)]['n'] = 1
-            else:
-                self._global_stats['averageQueueDepthByHour'][str(parser.parse(time).hour)]['total'] += len(queue)
-                self._global_stats['averageQueueDepthByHour'][str(parser.parse(time).hour)]['n'] += 1
+            self._global_stats['queueDepth']['hour'][str(parser.parse(time).hour)].append(len(queue))
+            self._global_stats['queueDepth']['day'][str(parser.parse(time).weekday())].append(len(queue))
 
-            if self._global_stats['averageQueueDepthByDay'][str(parser.parse(time).weekday())] == {}:
-                self._global_stats['averageQueueDepthByDay'][str(parser.parse(time).weekday())]['total'] = len(queue)
-                self._global_stats['averageQueueDepthByDay'][str(parser.parse(time).weekday())]['n'] = 1
-            else:
-                self._global_stats['averageQueueDepthByDay'][str(parser.parse(time).weekday())]['total'] += len(queue)
-                self._global_stats['averageQueueDepthByDay'][str(parser.parse(time).weekday())]['n'] += 1
-
-            self._global_stats['maxQueueDepthByHour'][str(parser.parse(time).hour)] = max(
-                [len(queue), self._global_stats['maxQueueDepthByHour'].get(str(parser.parse(time).hour), 0)]
-            )
-
-            self._global_stats['maxQueueDepthByDay'][str(parser.parse(time).weekday())] = max(
-                [len(queue), self._global_stats['maxQueueDepthByDay'].get(str(parser.parse(time).weekday()), 0)]
-            )
-
-            self._global_stats['minQueueDepthByDay'][str(parser.parse(time).weekday())] = min(
-                [len(queue), self._global_stats['minQueueDepthByHour'].get(str(parser.parse(time).weekday()),
-                                                                           QUEUE_THRESHOLD + 1)]
-            )
-
-            if len(queue) > q_depth:
-                q_depth = len(queue)
-                q_depth_time = time
-
-            self._global_stats['minQueueDepthByHour'][str(parser.parse(time).hour)] = min(
-                [len(queue), self._global_stats['minQueueDepthByHour'].get(str(parser.parse(time).hour),
-                                                                           QUEUE_THRESHOLD + 1)]
-            )
-
-        self._global_stats['averageFlushTimeByHour'] = defaultdict(dict)
-        self._global_stats['averageFlushTimeByDay'] = defaultdict(dict)
+        self._global_stats['flushTime'] = defaultdict(dict)
+        self._global_stats['flushTime']['hour'] = defaultdict(list)
+        self._global_stats['flushTime']['day'] = defaultdict(list)
 
         for time, flush_time in self._global_stats['historicalData']['flush_times'].items():
-            if self._global_stats['averageFlushTimeByHour'][str(parser.parse(time).hour)] == {}:
-                self._global_stats['averageFlushTimeByHour'][str(parser.parse(time).hour)]['total'] = flush_time
-                self._global_stats['averageFlushTimeByHour'][str(parser.parse(time).hour)]['n'] = 1
-            else:
-                self._global_stats['averageFlushTimeByHour'][str(parser.parse(time).hour)]['total'] += flush_time
-                self._global_stats['averageFlushTimeByHour'][str(parser.parse(time).hour)]['n'] += 1
+            self._global_stats['flushTime']['hour'][str(parser.parse(time).hour)].append(flush_time)
+            self._global_stats['flushTime']['day'][str(parser.parse(time).weekday())].append(flush_time)
 
-            if self._global_stats['averageFlushTimeByDay'][str(parser.parse(time).weekday())] == {}:
-                self._global_stats['averageFlushTimeByDay'][str(parser.parse(time).weekday())]['total'] = flush_time
-                self._global_stats['averageFlushTimeByDay'][str(parser.parse(time).weekday())]['n'] = 1
-            else:
-                self._global_stats['averageFlushTimeByDay'][str(parser.parse(time).weekday())]['total'] += flush_time
-                self._global_stats['averageFlushTimeByDay'][str(parser.parse(time).weekday())]['n'] += 1
-
-            self._global_stats['minFlushTimeByHour'][str(parser.parse(time).hour)] = min(
-                [flush_time, self._global_stats['minFlushTimeByHour'].get(str(parser.parse(time).hour),
-                                                                          MAX_FLUSH_THRESHOLD)]
-            )
-
-            self._global_stats['maxFlushTimeByHour'][str(parser.parse(time).hour)] = max(
-                [flush_time, self._global_stats['maxFlushTimeByHour'].get(str(parser.parse(time).hour), 0)]
-            )
-
-            self._global_stats['maxFlushTimeByDay'][str(parser.parse(time).weekday())] = max(
-                [flush_time, self._global_stats['maxFlushTimeByDay'].get(str(parser.parse(time).weekday()), 0)]
-            )
-
-            self._global_stats['minFlushTimeByDay'][str(parser.parse(time).weekday())] = min(
-                [flush_time, self._global_stats['minFlushTimeByDay'].get(str(parser.parse(time).weekday()),
-                                                                          MAX_FLUSH_THRESHOLD)]
-            )
-
-        queue_depth_final_hour = {}
-        queue_depth_final_day = {}
-        flush_time_final_hour = {}
-        flush_time_final_day = {}
-        previous_average = -1
+        previous_average_hour = -1
+        previous_average_day = -1
 
         for i in range(7):
-            if not self._global_stats['maxQueueDepthByDay'].get(str(i)):
-                self._global_stats['maxQueueDepthByDay'][str(i)] = 0
-            if not self._global_stats['minQueueDepthByDay'].get(str(i)):
-                self._global_stats['minQueueDepthByDay'][str(i)] = 0
-            if not self._global_stats['maxFlushTimeByDay'].get(str(i)):
-                self._global_stats['maxFlushTimeByDay'][str(i)] = 0
-            if not self._global_stats['minFlushTimeByDay'].get(str(i)):
-                self._global_stats['minFlushTimeByDay'][str(i)] = 0
-
-            if str(i) not in self._global_stats['averageQueueDepthByDay']:
-                if any([self._global_stats['averageQueueDepthByDay'][j] for j in range(i + 1, 24)]):
-                    queue_depth_final_day[str(i)] = previous_average if previous_average != -1 else 0
+            if str(i) not in self._global_stats['queueDepth']['day']:
+                if any([self._global_stats['queueDepth']['day'][str(j)] for j in range(i + 1, 7)]):
+                    self._global_stats['queueDepth']['day'][str(i)] = previous_average_day if previous_average_day != -1 else 0
                 else:
-                    queue_depth_final_day[str(i)] = 0
+                    self._global_stats['queueDepth']['day'][str(i)] = 0
             else:
-                v = self._global_stats['averageQueueDepthByDay'][str(i)]
-                queue_depth_final_day[str(i)] = round((v['total'] / v['n']) if v['n'] else 0, 2)
-                previous_average = queue_depth_final_day[str(i)]
+                previous_average_day = self._global_stats['queueDepth']['day'][str(i)]
 
-            if str(i) not in self._global_stats['averageFlushTimeByDay']:
-                if any([self._global_stats['averageFlushTimeByDay'][j] for j in range(i + 1, 24)]):
-                    flush_time_final_day[str(i)] = previous_average if previous_average != -1 else 0
+            if str(i) not in self._global_stats['flushTime']['day']:
+                if any([self._global_stats['flushTime']['day'][str(j)] for j in range(i + 1, 7)]):
+                    self._global_stats['flushTime']['day'][str(i)] = previous_average_day if previous_average_day != -1 else 0
                 else:
-                    flush_time_final_day[str(i)] = 0
+                    self._global_stats['flushTime']['day'][str(i)] = 0
             else:
-                v = self._global_stats['averageFlushTimeByDay'][str(i)]
-                flush_time_final_day[str(i)] = round((v['total'] / v['n']) if v['n'] else 0, 2)
-                previous_average = flush_time_final_day[str(i)]
+                previous_average_day = self._global_stats['flushTime']['day'][str(i)]
 
         for i in range(24):
-            if not self._global_stats['minFlushTimeByHour'].get(str(i)):
-                self._global_stats['minFlushTimeByHour'][str(i)] = 0
-            if not self._global_stats['maxFlushTimeByHour'].get(str(i)):
-                self._global_stats['maxFlushTimeByHour'][str(i)] = 0
-            if not self._global_stats['minQueueDepthByHour'].get(str(i)):
-                self._global_stats['minQueueDepthByHour'][str(i)] = 0
-            if not self._global_stats['maxQueueDepthByHour'].get(str(i)):
-                self._global_stats['maxQueueDepthByHour'][str(i)] = 0
-
-            if str(i) not in self._global_stats['averageQueueDepthByHour']:
-                if any([self._global_stats['averageQueueDepthByHour'][j] for j in range(i + 1, 24)]):
-                    queue_depth_final_hour[str(i)] = previous_average if previous_average != -1 else 0
+            if str(i) not in self._global_stats['queueDepth']['hour']:
+                if any([self._global_stats['queueDepth']['hour'][str(j)] for j in range(i + 1, 24)]):
+                    self._global_stats['queueDepth']['hour'][str(i)] = previous_average_hour if previous_average_hour != -1 else 0
                 else:
-                    queue_depth_final_hour[str(i)] = 0
+                    self._global_stats['queueDepth']['hour'][str(i)] = 0
             else:
-                v = self._global_stats['averageQueueDepthByHour'][str(i)]
-                queue_depth_final_hour[str(i)] = round((v['total'] / v['n']) if v['n'] else 0, 2)
-                previous_average = queue_depth_final_hour[str(i)]
+                previous_average_hour = self._global_stats['queueDepth']['hour'][str(i)]
 
-            if str(i) not in self._global_stats['averageFlushTimeByHour']:
-                if any([self._global_stats['averageFlushTimeByHour'][j] for j in range(i + 1, 24)]):
-                    flush_time_final_hour[str(i)] = previous_average if previous_average != -1 else 0
+            if str(i) not in self._global_stats['flushTime']['hour']:
+                if any([self._global_stats['flushTime']['hour'][str(j)] for j in range(i + 1, 24)]):
+                    self._global_stats['flushTime']['hour'][str(i)] = previous_average_hour if previous_average_hour != -1 else 0
                 else:
-                    flush_time_final_hour[str(i)] = 0
+                    self._global_stats['flushTime']['hour'][str(i)] = 0
             else:
-                v = self._global_stats['averageFlushTimeByHour'][str(i)]
-                flush_time_final_hour[str(i)] = round((v['total'] / v['n']) if v['n'] else 0, 2)
-                previous_average = flush_time_final_hour[str(i)]
+                previous_average_hour = self._global_stats['flushTime']['hour'][str(i)]
 
-        self._global_stats['averageQueueDepthByHour'] = queue_depth_final_hour
-        self._global_stats['averageQueueDepthByDay'] = queue_depth_final_day
-        self._global_stats['averageFlushTimeByHour'] = flush_time_final_hour
-        self._global_stats['averageFlushTimeByDay'] = flush_time_final_day
         self._global_stats['largestQueueDepth'] = q_depth
         self._global_stats['largestQueueDepthHour'] = q_depth_time
 
@@ -232,14 +123,6 @@ class Queue:
                 'quickestAtHeadUsers': [],
                 'largestQueueDepth': -1,
                 'largestQueueDepthTime': None,
-                'maxQueueDepthByHour': {},
-                'minQueueDepthByHour': {},
-                'minFlushTimeByHour': {},
-                'maxFlushTimeByHour': {},
-                'maxQueueDepthByDay': {},
-                'maxFlushTimeByDay': {},
-                'minFlushTimeByDay': {},
-                'minQueueDepthByDay': {},
             }
         else:
             self._global_stats = json.load(open(self._global_stats_file, 'r'))
@@ -290,7 +173,6 @@ class Queue:
             pickled_person = self._people.get_person(id=data['personId'])
             self._people.update_person(
                 id=data['personId'],
-                number_of_times_in_queue=pickled_person['number_of_times_in_queue'] + 1,
                 added_to_queue=pickled_person['added_to_queue'] + [enqueued]
             )
             self._save()
@@ -321,8 +203,8 @@ class Queue:
 
         self._people.update_person(
             id=member['personId'],
-            totalTimeInQueue=person['totalTimeInQueue'] + total,
-            totalTimeAtHead=person['totalTimeAtHead'] + at_head,
+            timesInQueue=person['timesInQueue'] + [total],
+            timesAtHead=person['timesAtHead'] + [at_head],
             currentlyInQueue=False,
             removed_from_queue=person['removed_from_queue'] + [str(now)]
         )
@@ -332,31 +214,46 @@ class Queue:
 
     def get_average_time_in_queue(self, id):
         person = self._people.get_person(id=id)
-        if person['number_of_times_in_queue'] == 0:
+        if not person['timesInQueue']:
             return 0
         else:
             if person['currentlyInQueue']:
                 time_enqueued = parser.parse(self.get_queue_member(person['sparkId'])['timeEnqueued'])
-                time_in_queue = person['totalTimeInQueue'] + \
-                                round((datetime.datetime.now() - time_enqueued).total_seconds())
-            else:
-                time_in_queue = person['totalTimeInQueue']
+                person['timesInQueue'].append(round((datetime.datetime.now() - time_enqueued).total_seconds()))
 
-            return round(time_in_queue / person['number_of_times_in_queue'], 2)
+            return round(sum(person['timesInQueue']) / len(person['timesInQueue']), 2)
 
     def get_average_time_at_queue_head(self, id):
         queue = self.get_queue()
         person = self._people.get_person(id=id)
-        if person['number_of_times_in_queue'] == 0:
+
+        if not person['timesInQueue']:
             return 0
         else:
             if len(queue) and self.get_head().get('personId') == person['sparkId']:
                 time_at_head = parser.parse(self.get_head()['atHeadTime'])
-                total_head = person['totalTimeAtHead'] + round((datetime.datetime.now() - time_at_head).total_seconds())
+                current = max([0, round((datetime.datetime.now() - time_at_head).total_seconds())])
+                times_at_head = person['timesAtHead'] + ([current] if current else [])
             else:
-                total_head = person['totalTimeAtHead']
+                times_at_head = person['timesAtHead']
 
-            return round(total_head / person['number_of_times_in_queue'], 2)
+            return round(sum(times_at_head) / len(person['timesInQueue']), 2)
+
+    def get_median_time_at_queue_head(self, id):
+        queue = self.get_queue()
+        person = self._people.get_person(id=id)
+
+        if not person['timesInQueue']:
+            return 0
+        else:
+            if len(queue) and self.get_head().get('personId') == person['sparkId']:
+                time_at_head = parser.parse(self.get_head()['atHeadTime'])
+                current = max([0, round((datetime.datetime.now() - time_at_head).total_seconds())])
+                times_at_head = person['timesAtHead'] + ([current] if current else [])
+            else:
+                times_at_head = person['timesAtHead']
+
+            return statistics.median(times_at_head)
 
     def get_most_active(self):
         return [self._people.get_person(i) for i in self._global_stats['mostActiveQueueUsers']]
@@ -370,25 +267,25 @@ class Queue:
             member = self.get_member(id)
             if member:
                 if self.get_head().get('personId') == id:
-                    average = self.get_average_time_at_queue_head(member['personId'])
-                    return max([0, average - round(
-                        (datetime.datetime.now() - parser.parse(self.get_head()['atHeadTime'])).total_seconds()
-                    )])
+                    return self.get_median_time_at_queue_head(member['personId'])
                 else:
                     location_in_queue = [i['personId'] for i in self.get_queue()].index(id)
                     partial_queue = self.get_queue()[:location_in_queue]
                     return sum(self.get_estimated_flush_time(i['personId']) for i in partial_queue) + \
-                           self.get_average_time_at_queue_head(id)
+                           self.get_median_time_at_queue_head(id)
             else:
                 # Member not in queue
                 raise Exception("Member '" + str(id) + "' not in queue")
         else:
             # Get estimated flush time for full queue
-            return sum(self.get_estimated_flush_time(i['personId']) for i in self.get_queue())
+            if self.get_queue():
+                return self.get_estimated_flush_time(self.get_queue()[-1]['personId'])
+            else:
+                return 0
 
     def get_estimated_wait_time(self, id=None):
         if id:
-            return max([0, self.get_estimated_flush_time(id=id) - self.get_average_time_at_queue_head(id)])
+            return max([0, self.get_estimated_flush_time(id=id) - self.get_median_time_at_queue_head(id)])
         else:
             return self.get_estimated_flush_time()
 
@@ -401,38 +298,8 @@ class Queue:
     def get_quickest_at_head(self):
         return [self._people.get_person(id=i) for i in self._global_stats['quickestAtHeadUsers']]
 
-    def get_average_queue_depth_by_hour(self):
-        return self._global_stats['averageQueueDepthByHour']
-
-    def get_average_queue_depth_by_day(self):
-        return self._global_stats['averageQueueDepthByDay']
-
-    def get_max_queue_depth_by_hour(self):
-        return self._global_stats['maxQueueDepthByHour']
-
-    def get_min_queue_depth_by_day(self):
-        return self._global_stats['minQueueDepthByDay']
-
-    def get_max_queue_depth_by_day(self):
-        return self._global_stats['maxQueueDepthByDay']
-
-    def get_min_queue_depth_by_hour(self):
-        return self._global_stats['minQueueDepthByHour']
-
-    def get_min_flush_time_by_hour(self):
-        return self._global_stats['minFlushTimeByHour']
-
-    def get_max_flush_time_by_hour(self):
-        return self._global_stats['maxFlushTimeByHour']
-
-    def get_max_flush_time_by_day(self):
-        return self._global_stats['maxFlushTimeByDay']
-
-    def get_min_flush_time_by_day(self):
-        return self._global_stats['minFlushTimeByDay']
-
-    def get_average_flush_time_by_hour(self):
-        return self._global_stats['averageFlushTimeByHour']
-
-    def get_average_flush_time_by_day(self):
-        return self._global_stats['averageFlushTimeByDay']
+    def get_function_attribute_by_unit(self, function, attribute, unit):
+        data = self._global_stats.get(attribute, {}).get(unit, {})
+        for i in data:
+            data[i] = function(i)
+        return data

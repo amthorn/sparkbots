@@ -241,17 +241,17 @@ class Bot():
             if not target or target == 'TOTAL TIME IN QUEUE':
                 if person['currentlyInQueue']:
                     time_enqueued = parser.parse(self.q.get_queue_member(person['sparkId'])['timeEnqueued'])
-                    stats[target or 'TOTAL TIME IN QUEUE'].append(str(person['totalTimeInQueue'] + \
+                    stats[target or 'TOTAL TIME IN QUEUE'].append(str(sum(person['timesInQueue']) + \
                                     round((datetime.datetime.now() - time_enqueued).total_seconds())) + ' seconds')
                 else:
-                    stats[target or 'TOTAL TIME IN QUEUE'].append(str(person['totalTimeInQueue']) + ' seconds')
+                    stats[target or 'TOTAL TIME IN QUEUE'].append(str(sum(person['timesInQueue'])) + ' seconds')
             if not target or target == 'TOTAL TIME AT QUEUE HEAD':
                 if len(queue) and queue[0]['personId'] == person['sparkId']:
                     time_enqueued = parser.parse(queue[0]['atHeadTime'])
-                    stats[target or 'TOTAL TIME AT QUEUE HEAD'].append(str(person['totalTimeAtHead'] +
+                    stats[target or 'TOTAL TIME AT QUEUE HEAD'].append(str(sum(person['timesInQueue']) +
                                          round((datetime.datetime.now() - time_enqueued).total_seconds())) + ' seconds')
                 else:
-                    stats[target or 'TOTAL TIME AT QUEUE HEAD'].append(str(person['totalTimeAtHead']) + ' seconds')
+                    stats[target or 'TOTAL TIME AT QUEUE HEAD'].append(str(sum(person['timesInQueue'])) + ' seconds')
 
             if not target or target == 'AVERAGE TIME IN QUEUE':
                 stats[target or 'AVERAGE TIME IN QUEUE'].append(
@@ -264,7 +264,7 @@ class Bot():
             if not target or target == 'COMMANDS ISSUED':
                 stats[target or 'COMMANDS ISSUED'].append(str(person['commands']))
             if not target or target == 'NUMBER OF TIMES IN QUEUE':
-                stats[target or 'NUMBER OF TIMES IN QUEUE'].append(str(person['number_of_times_in_queue']))
+                stats[target or 'NUMBER OF TIMES IN QUEUE'].append(str(len(person['timesInQueue'])))
         return stats
 
     def show_projects(self, data):
@@ -979,7 +979,7 @@ class Bot():
 
         for person in quickest:
             message += ("- " + person['displayName'] + " (" + self._make_time_pretty(
-                            self.q.get_average_time_at_queue_head(id=person['sparkId'])
+                            self.q.get_median_time_at_queue_head(id=person['sparkId'])
             ) + ")\n")
         self.create_message(
             message,
@@ -1015,7 +1015,11 @@ class Bot():
         function_mapping.get(tuple([aggregate, stat, unit]), self.no_command_found)(data)
 
     def get_average_flush_time_hour(self, data):
-        d = self.q.get_average_flush_time_by_hour()
+        d = self.q.get_function_attribute_by_unit(
+            function=lambda x: ((sum(x) / len(x)) if x else 0),
+            attribute='flushTime',
+            unit='hour'
+        )
 
         reformatted = {}
         while len(d):
@@ -1034,10 +1038,14 @@ class Bot():
             )
 
     def get_average_flush_time_day(self, data):
-        d = self.q.get_average_flush_time_by_day()
+        d = self.q.get_function_attribute_by_unit(
+            function=lambda x: ((sum(x) / len(x)) if x else 0),
+            attribute='flushTime',
+            unit='day'
+        )
         days = {'0': 'Monday', '1': 'Tuesday', '2': 'Wednesday', '3': 'Thursday',
                 '4': 'Friday', '5': 'Saturday', '6': 'Sunday'}
-        reformatted = {days[str(k)]: d[str(k)] for k in range(7)}
+        reformatted = {days[str(k)]: d.get(str(k), '0') for k in range(7)}
 
         with self._create_bar_graph(
                 title="Average Flush Time by Day for '" + str(self.project.get_project()) + "' on subproject '" + str(self.subproject) + "'",
@@ -1052,7 +1060,11 @@ class Bot():
             )
 
     def get_min_queue_depth_hour(self, data):
-        d = self.q.get_min_queue_depth_by_hour()
+        d = self.q.get_function_attribute_by_unit(
+            function=lambda x: (min(x) if x else 0),
+            attribute='queueDepth',
+            unit='hour'
+        )
 
         reformatted = {}
         while len(d):
@@ -1070,7 +1082,11 @@ class Bot():
             )
 
     def get_max_flush_time_hour(self, data):
-        d = self.q.get_max_flush_time_by_hour()
+        d = self.q.get_function_attribute_by_unit(
+            function=lambda x: (max(x) if x else 0),
+            attribute='flushTime',
+            unit='hour'
+        )
 
         reformatted = {}
         while len(d):
@@ -1089,10 +1105,14 @@ class Bot():
             )
 
     def get_max_flush_time_day(self, data):
-        d = self.q.get_max_flush_time_by_day()
+        d = self.q.get_function_attribute_by_unit(
+            function=lambda x: (max(x) if x else 0),
+            attribute='flushTime',
+            unit='day'
+        )
         days = {'0': 'Monday', '1': 'Tuesday', '2': 'Wednesday', '3': 'Thursday',
                 '4': 'Friday', '5': 'Saturday', '6': 'Sunday'}
-        reformatted = {days[str(k)]: d[str(k)] for k in range(7)}
+        reformatted = {days[str(k)]: d.get(str(k), '0') for k in range(7)}
 
         with self._create_bar_graph(
                 title="Max Flush Time by Day for '" + str(self.project.get_project()) + "' on subproject '" + str(self.subproject) + "'",
@@ -1107,10 +1127,14 @@ class Bot():
             )
 
     def get_min_flush_time_day(self, data):
-        d = self.q.get_min_flush_time_by_day()
+        d = self.q.get_function_attribute_by_unit(
+            function=lambda x: (min(x) if x else 0),
+            attribute='flushTime',
+            unit='day'
+        )
         days = {'0': 'Monday', '1': 'Tuesday', '2': 'Wednesday', '3': 'Thursday',
                 '4': 'Friday', '5': 'Saturday', '6': 'Sunday'}
-        reformatted = {days[str(k)]: d[str(k)] for k in range(7)}
+        reformatted = {days[str(k)]: d.get(str(k), '0') for k in range(7)}
 
         with self._create_bar_graph(
                 title="Min Flush Time by Day for '" + str(self.project.get_project()) + "' on subproject '" + str(self.subproject) + "'",
@@ -1125,7 +1149,11 @@ class Bot():
             )
 
     def get_min_flush_time_hour(self, data):
-        d = self.q.get_min_flush_time_by_hour()
+        d = self.q.get_function_attribute_by_unit(
+            function=lambda x: (min(x) if x else 0),
+            attribute='flushTime',
+            unit='hour'
+        )
 
         reformatted = {}
         while len(d):
@@ -1144,7 +1172,11 @@ class Bot():
             )
 
     def get_max_queue_depth_hour(self, data):
-        d = self.q.get_max_queue_depth_by_hour()
+        d = self.q.get_function_attribute_by_unit(
+            function=lambda x: (max(x) if x else 0),
+            attribute='queueDepth',
+            unit='hour'
+        )
 
         reformatted = {}
         while len(d):
@@ -1162,7 +1194,11 @@ class Bot():
             )
 
     def get_average_queue_depth_hour(self, data):
-        d = self.q.get_average_queue_depth_by_hour()
+        d = self.q.get_function_attribute_by_unit(
+            function=lambda x: ((sum(x) / len(x)) if x else 0),
+            attribute='queueDepth',
+            unit='hour'
+        )
 
         reformatted = {}
         while len(d):
@@ -1180,7 +1216,11 @@ class Bot():
             )
 
     def get_average_queue_depth_day(self, data):
-        d = self.q.get_average_queue_depth_by_day()
+        d = self.q.get_function_attribute_by_unit(
+            function=lambda x: ((sum(x) / len(x)) if x else 0),
+            attribute='queueDepth',
+            unit='day'
+        )
         days = {'0': 'Monday', '1': 'Tuesday', '2': 'Wednesday', '3': 'Thursday',
                 '4': 'Friday', '5': 'Saturday', '6': 'Sunday'}
         reformatted = {days[k]: v for k, v in d.items()}
@@ -1197,7 +1237,11 @@ class Bot():
             )
 
     def get_max_queue_depth_day(self, data):
-        d = self.q.get_max_queue_depth_by_day()
+        d = self.q.get_function_attribute_by_unit(
+            function=lambda x: max(x) if x else 0,
+            attribute='queueDepth',
+            unit='day'
+        )
         days = {'0': 'Monday', '1': 'Tuesday', '2': 'Wednesday', '3': 'Thursday',
                 '4': 'Friday', '5': 'Saturday', '6': 'Sunday'}
         reformatted = {days[k]: v for k, v in d.items()}
@@ -1214,7 +1258,11 @@ class Bot():
             )
 
     def get_min_queue_depth_day(self, data):
-        d = self.q.get_min_queue_depth_by_day()
+        d = self.q.get_function_attribute_by_unit(
+            function=lambda x: min(x) if x else 0,
+            attribute='queueDepth',
+            unit='day'
+        )
         days = {'0': 'Monday', '1': 'Tuesday', '2': 'Wednesday', '3': 'Thursday',
                 '4': 'Friday', '5': 'Saturday', '6': 'Sunday'}
         reformatted = {days[k]: v for k, v in d.items()}

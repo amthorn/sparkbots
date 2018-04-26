@@ -177,7 +177,9 @@ def test_how_long_nonadmin_empty_queue():
         "added_to_queue": [
             "1980-01-01 11:00:00.000000"
         ],
-        "removed_from_queue": []
+        "removed_from_queue": [],
+        'timesInQueue': [],
+        'timesAtHead': []
     }]
 )
 def test_how_long_nonadmin_nonempty_queue():
@@ -447,8 +449,8 @@ def test_list_empty():
     people=[
         {
             'sparkId': 'fooid',
-            'number_of_times_in_queue': 1,
-            'totalTimeAtHead': 5
+            'timesAtHead': [5],
+            'timesInQueue': [5]
         }
     ]
 )
@@ -494,8 +496,8 @@ def test_list_one_member():
     people=[
         {
             'sparkId': 'fooid',
-            'number_of_times_in_queue': 1,
-            'totalTimeAtHead': 5
+            'timesAtHead': [5],
+            'timesInQueue': [5]
         }
     ],
     subprojects=['GENERAL', 'OTHER_SUBPROJECT']
@@ -635,13 +637,13 @@ def test_list_invalid_subproject():
     people=[
         {
             'sparkId': 'fooid',
-            'number_of_times_in_queue': 2,
-            'totalTimeAtHead': 5
+            'timesAtHead': [2, 3],
+            'timesInQueue': [2, 3]
         },
         {
             'sparkId': 'fooid2',
-            'number_of_times_in_queue': 2,
-            'totalTimeAtHead': 5
+            'timesAtHead': [2, 3],
+            'timesInQueue': [2, 3],
         }]
 )
 def test_list_two_members():
@@ -655,7 +657,7 @@ def test_list_two_members():
                         '1. Unit Test Display Name (12:34:45 PM on Fri, Apr 06)\n'
                         '2. Unit Test Display Name 2 (12:34:45 PM on Sat, Apr 07)'
                         '\n\n\nGiven that there are 2 people in the queue. '
-                        'Estimated wait time from the back of the queue is:\n\n0:00:02.500000',
+                        'Estimated wait time from the back of the queue is:\n\n0:00:05.500000',
                roomId='BLAH'
            ), "Sent message not correct"
     args, kwargs = json.dump.call_args
@@ -688,14 +690,6 @@ def test_list_two_members():
             'largestQueueDepths': {},
             'largestQueueDepthTimes': {}
         },
-        'maxQueueDepthByHour': {},
-        'maxQueueDepthByDay': {},
-        'minQueueDepthByHour': {},
-        'minQueueDepthByDay': {},
-        'minFlushTimeByHour': {},
-        'minFlushTimeByDay': {},
-        'maxFlushTimeByHour': {},
-        'maxFlushTimeByDay': {},
         'largestQueueDepth':   0,
         'largestQueueDepthTime': '1980-01-01 10:00:00.000000',
     }
@@ -753,26 +747,17 @@ def test_add_me_empty_queue():
             'largestQueueDepths': {},
             'largestQueueDepthTimes': {}
         },
-        'maxQueueDepthByHour': {},
-        'minQueueDepthByHour': {},
-        'minFlushTimeByHour': {},
-        'maxFlushTimeByHour': {},
-        'maxQueueDepthByDay': {},
-        'minQueueDepthByDay': {},
-        'minFlushTimeByDay': {},
-        'maxFlushTimeByDay': {},
         'largestQueueDepth':   0,
         'largestQueueDepthTime': '1980-01-01 10:00:00.000000'
     },
     people=[{
         'sparkId': 'first-id',
-        'number_of_times_in_queue': 0,
-        'totalTimeInQueue': 30,
-        'totalTimeAtHead': 30,
         'added_to_queue': [
             '1980-01-01 11:00:00.000000'
         ],
-        'removed_from_queue': []
+        'removed_from_queue': [],
+        'timesInQueue': [30],
+        'timesAtHead': [30]
     }]
 )
 def test_add_me_one_in_queue():
@@ -786,7 +771,7 @@ def test_add_me_one_in_queue():
                         '1. Unit Test Display Name 1 (12:31:22 PM on Fri, Apr 06)\n'
                         '2. Unit Test Display Name (12:00:00 PM on Tue, Jan 01)\n\n\n'
                         'Given that there are 2 people in the queue. Estimated wait time '
-                        'from the back of the queue is:\n\n0:00:00',
+                        'from the back of the queue is:\n\n0:30:15',
                roomId='BLAH'
            ), "Sent message not correct"
     args, kwargs = json.dump.call_args_list[0]
@@ -899,21 +884,13 @@ def test_remove_me_one_in_queue():
             'largestQueueDepths': {},
             'largestQueueDepthTimes': {}
         },
-        'maxQueueDepthByHour': {},
-        'minQueueDepthByHour': {},
-        'minFlushTimeByHour': {},
-        'maxFlushTimeByHour': {},
-        'maxQueueDepthByDay': {},
-        'minQueueDepthByDay': {},
-        'minFlushTimeByDay': {},
-        'maxFlushTimeByDay': {},
         'largestQueueDepth':   0,
         'largestQueueDepthTime': '1980-01-01 10:00:00.000000'
     },
     people=[{
         'sparkId': 'test_remove_me_one_in_queue2',
-        'number_of_times_in_queue': 1,
-        'totalTimeAtHead': 30,
+        'timesInQueue': [30],
+        'timesAtHead': [30],
         'added_to_queue': [
             '2018-04-06 12:31:22.458645'
         ],
@@ -970,7 +947,7 @@ def test_remove_me_two_in_queue_me_at_head():
         "displayName": "Unit Test Display Name",
         "atHeadTime": None
     }, {
-        "personId": "test_remove_me_one_in_queue2",
+        "personId": "test_remove_me_one_in_queue3",
         "timeEnqueued": "2018-04-06 12:31:22.458645",
         "displayName": "Unit Test Display Name",
         "atHeadTime": None
@@ -986,21 +963,21 @@ def test_remove_me_two_in_queue_me_at_head():
             'largestQueueDepths': {},
             'largestQueueDepthTimes': {}
         },
-        'maxQueueDepthByHour': {},
-        'minQueueDepthByHour': {},
-        'minFlushTimeByHour': {},
-        'maxFlushTimeByHour': {},
-        'maxQueueDepthByDay': {},
-        'minQueueDepthByDay': {},
-        'minFlushTimeByDay': {},
-        'maxFlushTimeByDay': {},
         'largestQueueDepth':   0,
         'largestQueueDepthTime': '1980-01-01 10:00:00.000000'
     },
     people=[{
         'sparkId': 'test_remove_me_one_in_queue2',
-        'number_of_times_in_queue': 1,
-        'totalTimeAtHead': 30,
+        'timesInQueue': [30],
+        'timesAtHead': [30],
+        'added_to_queue': [
+            '2018-04-06 12:31:22.458645'
+        ],
+        'removed_from_queue': []
+    }, {
+        'sparkId': 'test_remove_me_one_in_queue3',
+        'timesInQueue': [30],
+        'timesAtHead': [30],
         'added_to_queue': [
             '2018-04-06 12:31:22.458645'
         ],
@@ -1795,14 +1772,6 @@ def test_remove_admin_no_tags():
             'largestQueueDepths': {},
             'largestQueueDepthTimes': {}
         },
-        'maxQueueDepthByHour': {},
-        'minQueueDepthByHour': {},
-        'minFlushTimeByHour': {},
-        'maxFlushTimeByHour': {},
-        'maxQueueDepthByDay': {},
-        'minQueueDepthByDay': {},
-        'minFlushTimeByDay': {},
-        'maxFlushTimeByDay': {},
         'largestQueueDepth':   0,
         'largestQueueDepthTime': '1980-01-01 10:00:00.000000'
     },
@@ -1821,18 +1790,16 @@ def test_remove_admin_no_tags():
     }],
     people=[{
         'sparkId': 'ava_test_id',
-        'number_of_times_in_queue': 3,
-        'totalTimeInQueue': 30,
-        'totalTimeAtHead': 30,
+        'timesInQueue': [10, 10, 10],
+        'timesAtHead': [10, 10, 10],
         'removed_from_queue': [],
         'added_to_queue': [
             '1980-01-01 11:00:00.000000'
         ]
     },{
         'sparkId': 'unit_test_person',
-        'number_of_times_in_queue': 3,
-        'totalTimeInQueue': 30,
-        'totalTimeAtHead': 30,
+        'timesInQueue': [10, 10, 10],
+        'timesAtHead': [10, 10, 10],
         'removed_from_queue': [],
         'added_to_queue': [
             '1980-01-01 11:30:00.000000q'
@@ -1854,7 +1821,7 @@ def test_remove_person():
            mock.call(
                markdown="Removing \"Blah\"\n\nCurrent queue on subproject \"GENERAL\" is:\n\n1. Ava Test (11:00:00 AM on Tue, Jan 01)\n\n\n"
                         "Given that there is 1 person in the queue. Estimated wait time from "
-                        "the back of the queue is:\n\n0:00:00\n\n"
+                        "the back of the queue is:\n\n0:00:10\n\n"
                         "<@personId:ava_test_id|Ava Test>, you\'re at the front of the queue!",
                roomId='BLAH'
            ), "Sent message not correct"
@@ -2272,9 +2239,8 @@ def test_add_person_2_tags():
         "sparkId": "unit_test1",
         "displayName": "Blah",
         "currentlyInQueue": True,
-        "totalTimeInQueue": 50,
-        "totalTimeAtHead": 50,
-        "number_of_times_in_queue": 1,
+        "timesInQueue": [50],
+        "timesAtHead": [50],
         "commands": 4
     }],
     queue=[{
@@ -2423,8 +2389,8 @@ def test_largest_queue_depth():
     people=[{
         "sparkId": "unit_test",
         "displayName": "Blah2",
-        "number_of_times_in_queue": 2,
-        'totalTimeAtHead': 1234,
+        "timesInQueue": [1233, 1],
+        'timesAtHead': [1233, 1],
         'added_to_queue':[],
         'removed_from_queue': []
     }]
@@ -2458,10 +2424,13 @@ def test_quickest_at_head_user():
       ],
       "created": "2018-04-02T14:23:08.086Z"
     },
-    global_stats={'historicalData': {}, 'averageQueueDepthByHour': {
-        '1': 5
+    global_stats={
+        'historicalData': {},
+        'averageQueueDepthByHour': {
+            '1': 5
+        },
+        'quickestAtHeadUsers': ['unit_test']
     },
-                  'quickestAtHeadUsers': ['unit_test']},
     admins=['test_show_average_queue_depth'],
     project=[('UNIT_TEST', 'BLAH')],
 )
